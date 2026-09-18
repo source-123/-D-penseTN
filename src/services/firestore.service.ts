@@ -1,5 +1,5 @@
 import {
-  collection, doc, addDoc, getDocs, deleteDoc,
+  collection, doc, addDoc, getDocs, deleteDoc, updateDoc,
   query, where, orderBy, Timestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -39,6 +39,40 @@ export async function getTransactions(userId: string): Promise<Transaction[]> {
       createdAt: data.createdAt.toDate(),
     } as Transaction;
   });
+}
+
+export async function getTransaction(
+  userId: string,
+  transactionId: string
+): Promise<Transaction | null> {
+  const snap = await getDocs(userTxRef(userId));
+  const found = snap.docs.find((d) => d.id === transactionId);
+  if (!found) return null;
+  const data = found.data();
+  return {
+    id: found.id,
+    amount: data.amount,
+    type: data.type,
+    categoryId: data.categoryId,
+    note: data.note,
+    date: data.date.toDate(),
+    createdAt: data.createdAt.toDate(),
+  } as Transaction;
+}
+
+export async function updateTransaction(
+  userId: string,
+  transactionId: string,
+  input: Partial<NewTransaction>
+): Promise<void> {
+  const ref = doc(db, 'users', userId, 'transactions', transactionId);
+  const payload: Record<string, unknown> = {};
+  if (input.amount !== undefined) payload.amount = input.amount;
+  if (input.type !== undefined) payload.type = input.type;
+  if (input.categoryId !== undefined) payload.categoryId = input.categoryId;
+  if (input.note !== undefined) payload.note = input.note;
+  if (input.date !== undefined) payload.date = Timestamp.fromDate(input.date);
+  await updateDoc(ref, payload);
 }
 
 export async function deleteTransaction(

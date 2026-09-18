@@ -32,6 +32,10 @@ export default function Transactions() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
+  const handleEdit = (tx: Transaction) => {
+    router.push({ pathname: '/(app)/edit-expense', params: { id: tx.id } });
+  };
+
   const confirmDelete = (tx: Transaction) => {
     Alert.alert(
       'Supprimer cette transaction ?',
@@ -87,7 +91,11 @@ export default function Transactions() {
           data={transactions}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <TransactionItem transaction={item} onLongPress={confirmDelete} />
+            <TransactionItem
+              transaction={item}
+              onPress={handleEdit}
+              onLongPress={confirmDelete}
+            />
           )}
           contentContainerStyle={styles.list}
           refreshControl={
@@ -98,7 +106,9 @@ export default function Transactions() {
             />
           }
           ListFooterComponent={
-            <Text style={styles.hint}>Maintiens une ligne pour supprimer</Text>
+            <Text style={styles.hint}>
+              Tap = modifier · Maintien = supprimer
+            </Text>
           }
         />
       )}

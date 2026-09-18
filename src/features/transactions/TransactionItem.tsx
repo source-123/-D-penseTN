@@ -7,15 +7,17 @@ import type { Transaction } from '@/types';
 
 interface Props {
   transaction: Transaction;
+  onPress?: (tx: Transaction) => void;
   onLongPress?: (tx: Transaction) => void;
 }
 
-export function TransactionItem({ transaction, onLongPress }: Props) {
+export function TransactionItem({ transaction, onPress, onLongPress }: Props) {
   const cat = getCategory(transaction.categoryId);
   const isIncome = transaction.type === 'income';
 
   return (
     <Pressable
+      onPress={() => onPress?.(transaction)}
       onLongPress={() => onLongPress?.(transaction)}
       delayLongPress={400}
       style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
