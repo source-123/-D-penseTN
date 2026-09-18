@@ -1,13 +1,7 @@
 import { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Pressable,
+  View, Text, StyleSheet, SafeAreaView,
+  KeyboardAvoidingView, Platform, ScrollView, Pressable,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
@@ -22,13 +16,14 @@ import {
   type TransactionFormInput,
   type TransactionInput,
 } from '@/utils/validators';
-import { colors, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography } from '@/theme';
 
 export default function AddExpense() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const [loading, setLoading] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [type, setType] = useState<'expense' | 'income'>('expense');
 
   const {
     control,
@@ -36,12 +31,7 @@ export default function AddExpense() {
     formState: { errors },
   } = useForm<TransactionFormInput, any, TransactionInput>({
     resolver: zodResolver(transactionSchema),
-    defaultValues: {
-      amount: '',
-      categoryId: 'restaurant',
-      note: '',
-      type: 'expense',
-    },
+    defaultValues: { amount: '', categoryId: 'restaurant', note: '', type: 'expense' },
   });
 
   const onSubmit = async (data: TransactionInput) => {
@@ -51,7 +41,7 @@ export default function AddExpense() {
     try {
       await createTransaction(user.uid, {
         amount: data.amount,
-        type: 'expense',
+        type,
         categoryId: data.categoryId,
         note: data.note ?? '',
         date: new Date(),
@@ -65,38 +55,55 @@ export default function AddExpense() {
     }
   };
 
+  const isIncome = type === 'income';
+
   return (
     <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <Pressable onPress={() => router.back()} style={styles.backBtn}>
               <Text style={styles.backText}>← Retour</Text>
             </Pressable>
             <Text style={styles.title}>Ajouter</Text>
-            <Text style={styles.subtitle}>Une nouvelle dépense</Text>
+            <Text style={styles.subtitle}>Une nouvelle transaction</Text>
           </View>
 
-          <View style={styles.amountBox}>
-            <Controller
-              control={control}
-              name="amount"
-              render={({ field: { onChange, value, onBlur } }) => (
-                <Input
-                  label="Montant"
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  keyboardType="decimal-pad"
-                  placeholder="0.000"
-                  error={errors.amount?.message}
-                />
-              )}
-            />
+          {/* Toggle Dépense / Revenu */}
+          <View style={styles.toggle}>
+            <Pressable
+              onPress={() => setType('expense')}
+              style={[styles.toggleBtn, type === 'expense' && styles.toggleActive]}
+            >
+              <Text style={[styles.toggleText, type === 'expense' && styles.toggleTextActive]}>
+                💸 Dépense
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setType('income')}
+              style={[styles.toggleBtn, type === 'income' && styles.toggleActiveIncome]}
+            >
+              <Text style={[styles.toggleText, type === 'income' && styles.toggleTextActive]}>
+                💰 Revenu
+              </Text>
+            </Pressable>
           </View>
+
+          <Controller
+            control={control}
+            name="amount"
+            render={({ field: { onChange, value, onBlur } }) => (
+              <Input
+                label="Montant"
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                keyboardType="decimal-pad"
+                placeholder="0.000"
+                error={errors.amount?.message}
+              />
+            )}
+          />
 
           <Controller
             control={control}
@@ -119,7 +126,7 @@ export default function AddExpense() {
                 value={value ?? ''}
                 onChangeText={onChange}
                 onBlur={onBlur}
-                placeholder="Déjeuner"
+                placeholder={isIncome ? 'Salaire' : 'Déjeuner'}
               />
             )}
           />
@@ -131,7 +138,7 @@ export default function AddExpense() {
           ) : null}
 
           <Button
-            label="Ajouter"
+            label={isIncome ? 'Ajouter le revenu' : 'Ajouter la dépense'}
             onPress={handleSubmit(onSubmit)}
             loading={loading}
             style={{ marginTop: spacing.md }}
@@ -145,12 +152,30 @@ export default function AddExpense() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: spacing.lg, flexGrow: 1 },
-  header: { marginBottom: spacing.xl },
+  header: { marginBottom: spacing.lg },
   backBtn: { marginBottom: spacing.md },
   backText: { ...typography.body, color: colors.textMuted },
   title: { ...typography.h2, color: colors.text },
   subtitle: { ...typography.body, color: colors.textMuted, marginTop: spacing.xs },
-  amountBox: { marginBottom: spacing.sm },
+  toggle: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: 4,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  toggleBtn: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+  },
+  toggleActive: { backgroundColor: colors.danger },
+  toggleActiveIncome: { backgroundColor: colors.primary },
+  toggleText: { ...typography.bodyBold, color: colors.textMuted },
+  toggleTextActive: { color: colors.background },
   errorBox: {
     backgroundColor: 'rgba(239,68,68,0.1)',
     borderWidth: 1,
