@@ -84,17 +84,29 @@ export default function Dashboard() {
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} tintColor={colors.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => { setRefreshing(true); loadData(); }}
+            tintColor={colors.primary}
+          />
         }
       >
         <View style={styles.headerRow}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.hello}>Bonjour 👋</Text>
             <Text style={styles.email}>{user?.email}</Text>
           </View>
-          <Pressable onPress={handleLogout} style={styles.logoutBtn}>
-            <Text style={styles.logoutText}>↪</Text>
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable
+              onPress={() => router.push('/(app)/budgets')}
+              style={styles.iconBtn}
+            >
+              <Text style={styles.iconText}>🎯</Text>
+            </Pressable>
+            <Pressable onPress={handleLogout} style={styles.iconBtn}>
+              <Text style={styles.iconText}>↪</Text>
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.balanceBox}>
@@ -106,6 +118,23 @@ export default function Dashboard() {
             <Text style={styles.subLabel}>Ce mois</Text>
             <Text style={styles.month}>- {formatCurrency(monthExpenses)}</Text>
           </View>
+        </View>
+
+        <View style={styles.quickActions}>
+          <Pressable
+            style={styles.quickBtn}
+            onPress={() => router.push('/(app)/transactions')}
+          >
+            <Text style={styles.quickIcon}>📋</Text>
+            <Text style={styles.quickLabel}>Transactions</Text>
+          </Pressable>
+          <Pressable
+            style={styles.quickBtn}
+            onPress={() => router.push('/(app)/budgets')}
+          >
+            <Text style={styles.quickIcon}>🎯</Text>
+            <Text style={styles.quickLabel}>Budgets</Text>
+          </Pressable>
         </View>
 
         <View style={styles.section}>
@@ -135,7 +164,10 @@ export default function Dashboard() {
         </View>
       </ScrollView>
 
-      <Pressable style={styles.fab} onPress={() => router.push('/(app)/add-expense')}>
+      <Pressable
+        style={styles.fab}
+        onPress={() => router.push('/(app)/add-expense')}
+      >
         <Text style={styles.fabText}>+ Ajouter</Text>
       </Pressable>
     </SafeAreaView>
@@ -146,43 +178,99 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: spacing.lg, paddingBottom: 120 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
   hello: { ...typography.h3, color: colors.text },
   email: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
-  logoutBtn: {
+  headerActions: { flexDirection: 'row', gap: spacing.sm },
+  iconBtn: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surface,
+    alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: colors.border,
   },
-  logoutText: { fontSize: 18, color: colors.textMuted },
+  iconText: { fontSize: 18, color: colors.textMuted },
   balanceBox: {
-    backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg,
-    marginBottom: spacing.lg, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  label: { ...typography.caption, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  label: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   balance: { ...typography.h1, marginTop: spacing.xs },
   monthRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginTop: spacing.md, paddingTop: spacing.md,
-    borderTopWidth: 1, borderTopColor: colors.border,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   subLabel: { ...typography.caption, color: colors.textMuted },
   month: { ...typography.bodyBold, color: colors.danger },
+  quickActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  quickBtn: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.xs,
+  },
+  quickIcon: { fontSize: 22 },
+  quickLabel: { ...typography.caption, color: colors.text, fontWeight: '600' },
   section: { marginBottom: spacing.lg },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
   sectionTitle: { ...typography.bodyBold, color: colors.text },
   seeAll: { ...typography.caption, color: colors.primary },
-  empty: { ...typography.body, color: colors.textMuted, textAlign: 'center', marginTop: spacing.xs },
+  empty: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
   row: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   rowLabel: { ...typography.body, color: colors.text },
   rowAmount: { ...typography.bodyBold, color: colors.text },
   fab: {
-    position: 'absolute', bottom: spacing.lg, left: spacing.lg, right: spacing.lg,
-    backgroundColor: colors.primary, paddingVertical: spacing.md,
-    borderRadius: radius.pill, alignItems: 'center',
+    position: 'absolute',
+    bottom: spacing.lg,
+    left: spacing.lg,
+    right: spacing.lg,
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md,
+    borderRadius: radius.pill,
+    alignItems: 'center',
     boxShadow: '0 4px 12px rgba(74,222,128,0.4)',
   },
   fabText: { ...typography.button, color: colors.background },
