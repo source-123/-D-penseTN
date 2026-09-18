@@ -1,10 +1,17 @@
-import { collection, doc, addDoc, getDocs, query, where, orderBy, Timestamp } from 'firebase/firestore';
+import {
+  collection, doc, addDoc, getDocs, deleteDoc,
+  query, where, orderBy, Timestamp,
+} from 'firebase/firestore';
 import { db } from './firebase';
 import type { NewTransaction, Transaction } from '@/types';
 
-const userTxRef = (userId: string) => collection(db, 'users', userId, 'transactions');
+const userTxRef = (userId: string) =>
+  collection(db, 'users', userId, 'transactions');
 
-export async function createTransaction(userId: string, input: NewTransaction): Promise<string> {
+export async function createTransaction(
+  userId: string,
+  input: NewTransaction
+): Promise<string> {
   const now = Timestamp.now();
   const docRef = await addDoc(userTxRef(userId), {
     amount: input.amount,
@@ -34,13 +41,24 @@ export async function getTransactions(userId: string): Promise<Transaction[]> {
   });
 }
 
+export async function deleteTransaction(
+  userId: string,
+  transactionId: string
+): Promise<void> {
+  await deleteDoc(doc(db, 'users', userId, 'transactions', transactionId));
+}
+
 export interface MonthlySummary {
   totalIncome: number;
   totalExpenses: number;
   balance: number;
 }
 
-export async function getMonthlySummary(userId: string, year: number, month: number): Promise<MonthlySummary> {
+export async function getMonthlySummary(
+  userId: string,
+  year: number,
+  month: number
+): Promise<MonthlySummary> {
   const start = new Date(year, month - 1, 1);
   const end = new Date(year, month, 1);
   const q = query(
