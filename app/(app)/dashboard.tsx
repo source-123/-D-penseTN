@@ -55,9 +55,16 @@ export default function Dashboard() {
 
   const balance = totalIncome - totalExpenses;
 
+  const monthIncome = transactions
+    .filter((t) => t.type === 'income' && t.date >= startOfMonth)
+    .reduce((s, t) => s + t.amount, 0);
+
   const monthExpenses = transactions
     .filter((t) => t.type === 'expense' && t.date >= startOfMonth)
     .reduce((s, t) => s + t.amount, 0);
+
+  const monthSavings = monthIncome - monthExpenses;
+  const savingsRate = monthIncome > 0 ? (monthSavings / monthIncome) * 100 : 0;
 
   const categoryMap = new Map<string, number>();
   transactions
@@ -91,35 +98,76 @@ export default function Dashboard() {
           />
         }
       >
+        {/* ─── Header ─── */}
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
             <Text style={styles.hello}>Bonjour 👋</Text>
-            <Text style={styles.email}>{user?.email}</Text>
+            <Text style={styles.email} numberOfLines={1}>
+              {user?.email}
+            </Text>
           </View>
-          <View style={styles.headerActions}>
-            <Pressable
-              onPress={() => router.push('/(app)/budgets')}
-              style={styles.iconBtn}
-            >
-              <Text style={styles.iconText}>🎯</Text>
-            </Pressable>
-            <Pressable onPress={handleLogout} style={styles.iconBtn}>
-              <Text style={styles.iconText}>↪</Text>
-            </Pressable>
-          </View>
+          <Pressable onPress={handleLogout} style={styles.iconBtn}>
+            <Text style={styles.iconText}>↪</Text>
+          </Pressable>
         </View>
 
+        {/* ─── Carte Solde ─── */}
         <View style={styles.balanceBox}>
-          <Text style={styles.label}>Solde</Text>
-          <Text style={[styles.balance, { color: balance >= 0 ? colors.primary : colors.danger }]}>
+          <Text style={styles.label}>Solde total</Text>
+          <Text
+            style={[
+              styles.balance,
+              { color: balance >= 0 ? colors.primary : colors.danger },
+            ]}
+          >
             {formatCurrency(balance)}
           </Text>
+
           <View style={styles.monthRow}>
-            <Text style={styles.subLabel}>Ce mois</Text>
-            <Text style={styles.month}>- {formatCurrency(monthExpenses)}</Text>
+            <View style={styles.monthCol}>
+              <Text style={styles.subLabel}>Entrées du mois</Text>
+              <Text style={[styles.subValue, { color: colors.primary }]}>
+                + {formatCurrency(monthIncome)}
+              </Text>
+            </View>
+            <View style={styles.monthCol}>
+              <Text style={styles.subLabel}>Sorties du mois</Text>
+              <Text style={[styles.subValue, { color: colors.danger }]}>
+                - {formatCurrency(monthExpenses)}
+              </Text>
+            </View>
           </View>
+
+          {/* Barre épargne */}
+          {monthIncome > 0 && (
+            <View style={styles.savingsBlock}>
+              <View style={styles.savingsHeader}>
+                <Text style={styles.savingsLabel}>Épargne du mois</Text>
+                <Text
+                  style={[
+                    styles.savingsRate,
+                    { color: savingsRate >= 20 ? colors.primary : colors.warning },
+                  ]}
+                >
+                  {savingsRate.toFixed(0)}%
+                </Text>
+              </View>
+              <View style={styles.savingsBar}>
+                <View
+                  style={[
+                    styles.savingsFill,
+                    {
+                      width: `${Math.min(Math.max(savingsRate, 0), 100)}%`,
+                      backgroundColor: savingsRate >= 20 ? colors.primary : colors.warning,
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+          )}
         </View>
 
+        {/* ─── Raccourcis ─── */}
         <View style={styles.quickActions}>
           <Pressable
             style={styles.quickBtn}
@@ -135,8 +183,16 @@ export default function Dashboard() {
             <Text style={styles.quickIcon}>🎯</Text>
             <Text style={styles.quickLabel}>Budgets</Text>
           </Pressable>
+          <Pressable
+            style={styles.quickBtn}
+            onPress={() => router.push('/(app)/analysis')}
+          >
+            <Text style={styles.quickIcon}>📊</Text>
+            <Text style={styles.quickLabel}>Analyse</Text>
+          </Pressable>
         </View>
 
+        {/* ─── Dépenses du mois ─── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Dépenses du mois</Text>
@@ -146,16 +202,20 @@ export default function Dashboard() {
           </View>
 
           {categoryTotals.length === 0 ? (
-            <>
-              <Text style={styles.empty}>Aucune dépense pour l'instant.</Text>
-              <Text style={styles.empty}>Ajoute ta première !</Text>
-            </>
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyTitle}>Aucune dépense ce mois</Text>
+              <Text style={styles.emptyText}>
+                Appuie sur "+ Ajouter" pour enregistrer ta première dépense.
+              </Text>
+            </View>
           ) : (
             categoryTotals.map(({ categoryId, total }) => {
               const cat = getCategory(categoryId);
               return (
                 <View key={categoryId} style={styles.row}>
-                  <Text style={styles.rowLabel}>{cat.icon}  {cat.name}</Text>
+                  <Text style={styles.rowLabel}>
+                    {cat.icon}  {cat.name}
+                  </Text>
                   <Text style={styles.rowAmount}>{formatCurrency(total)}</Text>
                 </View>
               );
@@ -164,6 +224,7 @@ export default function Dashboard() {
         </View>
       </ScrollView>
 
+      {/* ─── FAB ─── */}
       <Pressable
         style={styles.fab}
         onPress={() => router.push('/(app)/add-expense')}
@@ -178,6 +239,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: spacing.lg, paddingBottom: 120 },
+
+  // Header
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -186,7 +249,6 @@ const styles = StyleSheet.create({
   },
   hello: { ...typography.h3, color: colors.text },
   email: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
-  headerActions: { flexDirection: 'row', gap: spacing.sm },
   iconBtn: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: colors.surface,
@@ -194,6 +256,8 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border,
   },
   iconText: { fontSize: 18, color: colors.textMuted },
+
+  // Balance
   balanceBox: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -211,15 +275,34 @@ const styles = StyleSheet.create({
   balance: { ...typography.h1, marginTop: spacing.xs },
   monthRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginTop: spacing.md,
     paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
+  monthCol: { flex: 1 },
   subLabel: { ...typography.caption, color: colors.textMuted },
-  month: { ...typography.bodyBold, color: colors.danger },
+  subValue: { ...typography.bodyBold, marginTop: 2 },
+
+  // Savings bar
+  savingsBlock: { marginTop: spacing.md },
+  savingsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  savingsLabel: { ...typography.caption, color: colors.textMuted },
+  savingsRate: { ...typography.bodyBold, fontSize: 14 },
+  savingsBar: {
+    height: 6,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  savingsFill: { height: '100%', borderRadius: 3 },
+
+  // Quick actions
   quickActions: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -237,6 +320,8 @@ const styles = StyleSheet.create({
   },
   quickIcon: { fontSize: 22 },
   quickLabel: { ...typography.caption, color: colors.text, fontWeight: '600' },
+
+  // Section
   section: { marginBottom: spacing.lg },
   sectionHeader: {
     flexDirection: 'row',
@@ -246,12 +331,25 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { ...typography.bodyBold, color: colors.text },
   seeAll: { ...typography.caption, color: colors.primary },
-  empty: {
-    ...typography.body,
+
+  // Empty
+  emptyBox: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  emptyTitle: { ...typography.bodyBold, color: colors.text, marginBottom: spacing.xs },
+  emptyText: {
+    ...typography.caption,
     color: colors.textMuted,
     textAlign: 'center',
-    marginTop: spacing.xs,
+    lineHeight: 18,
   },
+
+  // Row
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -262,6 +360,8 @@ const styles = StyleSheet.create({
   },
   rowLabel: { ...typography.body, color: colors.text },
   rowAmount: { ...typography.bodyBold, color: colors.text },
+
+  // FAB
   fab: {
     position: 'absolute',
     bottom: spacing.lg,
