@@ -6,7 +6,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useNotifStore } from '@/store/notification.store';
 import { useLangStore, useT } from '@/store/language.store';
-// import { useBalanceReminder } from '@/features/notifications/useBalanceReminder';
+import { useBalanceReminder } from '@/features/notifications/useBalanceReminder';
 import { confirm, info } from '@/utils/confirm';
 import { colors, radius, spacing, typography } from '@/theme';
 import { formatCurrency } from '@/utils/formatCurrency';
@@ -25,14 +25,16 @@ export default function Settings() {
   const { t, lang, isRTL } = useT();
   const s = useNotifStore();
   const { setLang } = useLangStore();
-  const testNow = async () => ({ ok: false, message: 'Désactivé pour debug' });
+  const { testNow } = useBalanceReminder();
   const [testing, setTesting] = useState(false);
 
   const handleEnableToggle = async (value: boolean) => {
-    if (value && Platform.OS === 'web') {
+    if (value) {
       const ok = await confirm({
         title: t('settings.notifTitle'),
-        message: t('settings.hint'),
+        message: Platform.OS === 'web'
+          ? t('settings.hint')
+          : 'Autoriser les notifications pour recevoir tes rappels ?',
         confirmLabel: t('common.confirm'),
       });
       if (!ok) return;
@@ -54,13 +56,8 @@ export default function Settings() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Pressable
-            onPress={() => router.back()}
-            style={[styles.backBtn, isRTL && { alignSelf: 'flex-end' }]}
-          >
-            <Text style={styles.backText}>
-              {isRTL ? '← ' : ''}{t('common.back')}{!isRTL ? '' : ''}
-            </Text>
+          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+            <Text style={styles.backText}>{isRTL ? '→' : '←'} {t('common.back')}</Text>
           </Pressable>
           <Text style={[styles.title, isRTL && styles.textRight]}>
             {t('settings.title')}
@@ -87,7 +84,11 @@ export default function Settings() {
                 <Text style={[styles.langLabel, active && styles.langLabelActive]}>
                   {opt.label}
                 </Text>
-                {active && <View style={styles.langCheck}><Text style={styles.langCheckText}>✓</Text></View>}
+                {active && (
+                  <View style={styles.langCheck}>
+                    <Text style={styles.langCheckText}>✓</Text>
+                  </View>
+                )}
               </Pressable>
             );
           })}
@@ -115,6 +116,7 @@ export default function Settings() {
 
         {s.enabled && (
           <>
+            {/* ─── Rappel quotidien ─── */}
             <View style={styles.card}>
               <View style={styles.row}>
                 <View style={{ flex: 1 }}>
@@ -132,7 +134,11 @@ export default function Settings() {
               {s.dailyReminder && (
                 <>
                   <Text style={styles.label}>{t('settings.sendHour')}</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.chipsRow}
+                  >
                     {HOURS.map((h) => {
                       const active = s.hour === h;
                       return (
@@ -152,6 +158,7 @@ export default function Settings() {
               )}
             </View>
 
+            {/* ─── Alerte budget ─── */}
             <View style={styles.card}>
               <View style={styles.row}>
                 <View style={{ flex: 1 }}>
@@ -167,6 +174,7 @@ export default function Settings() {
               </View>
             </View>
 
+            {/* ─── Alerte solde bas ─── */}
             <View style={styles.card}>
               <View style={styles.row}>
                 <View style={{ flex: 1 }}>
@@ -184,7 +192,11 @@ export default function Settings() {
               {s.lowBalanceAlert && (
                 <>
                   <Text style={styles.label}>{t('settings.threshold')}</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.chipsRow}
+                  >
                     {[50, 100, 200, 300, 500].map((amount) => {
                       const active = s.lowBalanceThreshold === amount;
                       return (
@@ -204,6 +216,7 @@ export default function Settings() {
               )}
             </View>
 
+            {/* ─── Test ─── */}
             <Pressable
               style={[styles.testBtn, testing && { opacity: 0.6 }]}
               onPress={handleTest}
@@ -249,10 +262,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     position: 'relative',
   },
-  langBtnActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryGlow,
-  },
+  langBtnActive: { borderColor: colors.primary, backgroundColor: colors.primaryGlow },
   langFlag: { fontSize: 28 },
   langLabel: { ...typography.caption, color: colors.textSecondary, fontWeight: '600' },
   langLabelActive: { color: colors.primary, fontWeight: '700' },
