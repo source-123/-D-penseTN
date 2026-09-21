@@ -8,12 +8,15 @@ import { useAuthStore } from '@/store/auth.store';
 import { useT } from '@/store/language.store';
 import { useTheme } from '@/store/theme.store';
 import { getTransactions } from '@/services/firestore.service';
+import { getBudgetsForMonth } from '@/services/budget.service';
 import { signOutUser } from '@/services/auth.service';
 import { getCategory } from '@/features/transactions/categories';
+import { computePrediction } from '@/features/prediction/utils';
 import { confirm } from '@/utils/confirm';
 import { spacing, typography, radius, shadows } from '@/theme';
 import { formatCurrency } from '@/utils/formatCurrency';
 import type { Transaction } from '@/types';
+import type { PredictionResult } from '@/types/prediction';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -22,6 +25,7 @@ export default function Dashboard() {
   const { colors: tc } = useTheme();
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [prediction, setPrediction] = useState<PredictionResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -30,6 +34,14 @@ export default function Dashboard() {
     try {
       const tx = await getTransactions(user.uid);
       setTransactions(tx);
+
+      // Prédiction
+      try {
+        const budgets = await getBudgetsForMonth(user.uid);
+        setPrediction(computePrediction(tx, budgets));
+      } catch (e) {
+        console.warn('[dashboard] prediction failed', e);
+      }
     } catch (e) {
       console.error('[dashboard]', e);
     } finally {
@@ -161,6 +173,33 @@ export default function Dashboard() {
           )}
         </View>
 
+        {/* ─── Prédiction widget ─── */}
+        {prediction && prediction.currentIncome > 0 && (
+          <Pressable
+            onPress={() => router.push('/(app)/prediction')}
+            style={[styles.predictionCard, { backgroundColor: tc.surface, borderColor: tc.border }]}
+          >
+            <View style={styles.predictionLeft}>
+              <Text style={styles.predictionEmoji}>🔮</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.predictionLabel, { color: tc.textMuted }]}>
+                  {t('prediction.title')}
+                </Text>
+                <Text style={[
+                  styles.predictionValue,
+                  { color: prediction.projectedBalance >= 0 ? tc.primary : tc.danger },
+                ]}>
+                  {prediction.projectedBalance >= 0 ? '+' : ''}{formatCurrency(prediction.projectedBalance)}
+                </Text>
+                <Text style={[styles.predictionMeta, { color: tc.textMuted }]}>
+                  {prediction.daysRemaining} {t('prediction.daysLeft')} · {t('prediction.confidence')} {prediction.confidence === 'high' ? '🟢' : prediction.confidence === 'medium' ? '🟡' : '🔴'}
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.predictionArrow, { color: tc.primary }]}>→</Text>
+          </Pressable>
+        )}
+
         {/* Quick actions — 6 boutons */}
         <Text style={[styles.sectionTitle, { color: tc.text }]}>{t('dash.shortcuts')}</Text>
         <View style={styles.quickGrid}>
@@ -253,7 +292,7 @@ const styles = StyleSheet.create({
   headerActions: { flexDirection: 'row', gap: spacing.sm },
   iconBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
   iconEmoji: { fontSize: 18 },
-  balanceCard: { borderRadius: radius.xl, padding: spacing.lg, marginBottom: spacing.lg, borderWidth: 1, overflow: 'hidden' },
+  balanceCard: { borderRadius: radius.xl, padding: spacing.lg, marginBottom: spacing.md, borderWidth: 1, overflow: 'hidden' },
   balanceGlow: { position: 'absolute', top: -60, right: -60, width: 180, height: 180, borderRadius: 90 },
   balanceLabel: { ...typography.label, marginBottom: spacing.sm },
   balanceValue: { ...typography.display, fontSize: 40 },
@@ -271,6 +310,29 @@ const styles = StyleSheet.create({
   savingsPercent: { ...typography.bodyBold, fontSize: 14 },
   savingsBar: { height: 8, borderRadius: 4, overflow: 'hidden' },
   savingsFill: { height: '100%', borderRadius: 4 },
+
+  // Prediction widget
+  predictionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    marginBottom: spacing.lg,
+  },
+  predictionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    flex: 1,
+  },
+  predictionEmoji: { fontSize: 28 },
+  predictionLabel: { ...typography.tiny, marginBottom: 2 },
+  predictionValue: { ...typography.h3, fontSize: 18 },
+  predictionMeta: { ...typography.tiny, marginTop: 2 },
+  predictionArrow: { fontSize: 22, fontWeight: '700' },
+
   sectionTitle: { ...typography.h3, marginBottom: spacing.md },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md, marginTop: spacing.sm },
   seeAll: { ...typography.caption, fontWeight: '600' },

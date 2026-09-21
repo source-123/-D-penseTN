@@ -198,4 +198,24 @@ export default {
       ],
       "createdTemplate": "Récurrence créée"
   },
+  prediction: {
+      "title": "Prédiction",
+      "monthProgress": "Progression du mois",
+      "days": "jours",
+      "daysLeft": "jours restants",
+      "confidence": "Confiance",
+      "projectedBalance": "SOLDE PROJETÉ FIN DE MOIS",
+      "currentExpenses": "Dépensé",
+      "projectedExpenses": "Projeté",
+      "savingsRate": "Taux d'épargne projeté",
+      "target": "Objectif",
+      "missing": "⚠️ Il manque {{amount}} DT pour atteindre 20% d'épargne.",
+      "advices": "Conseils",
+      "byCategory": "Détail par catégorie",
+      "noBudget": "Pas de budget",
+      "history": "3 derniers mois",
+      "month": "Mois",
+      "expenses": "Dépenses",
+      "savings": "Épargne"
+  },
 };

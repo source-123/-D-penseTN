@@ -197,4 +197,24 @@ export default {
       ],
       "createdTemplate": "Recurrence created"
   },
+  prediction: {
+      "title": "Prediction",
+      "monthProgress": "Month progress",
+      "days": "days",
+      "daysLeft": "days left",
+      "confidence": "Confidence",
+      "projectedBalance": "PROJECTED BALANCE END OF MONTH",
+      "currentExpenses": "Spent",
+      "projectedExpenses": "Projected",
+      "savingsRate": "Projected savings rate",
+      "target": "Target",
+      "missing": "⚠️ You need {{amount}} DT more to reach 20% savings.",
+      "advices": "Advice",
+      "byCategory": "By category",
+      "noBudget": "No budget",
+      "history": "Last 3 months",
+      "month": "Month",
+      "expenses": "Expenses",
+      "savings": "Savings"
+  },
 };

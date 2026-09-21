@@ -198,4 +198,24 @@ export default {
       ],
       "createdTemplate": "تم إنشاء المتكررة"
   },
+  prediction: {
+      "title": "التوقعات",
+      "monthProgress": "تقدم الشهر",
+      "days": "أيام",
+      "daysLeft": "أيام متبقية",
+      "confidence": "الثقة",
+      "projectedBalance": "الرصيد المتوقع نهاية الشهر",
+      "currentExpenses": "المصروف",
+      "projectedExpenses": "المتوقع",
+      "savingsRate": "نسبة التوفير المتوقعة",
+      "target": "الهدف",
+      "missing": "⚠️ ينقصك {{amount}} د.ت للوصول إلى 20% توفير.",
+      "advices": "نصائح",
+      "byCategory": "التفصيل حسب الفئة",
+      "noBudget": "لا ميزانية",
+      "history": "آخر 3 أشهر",
+      "month": "الشهر",
+      "expenses": "مصروفات",
+      "savings": "توفير"
+  },
 };
