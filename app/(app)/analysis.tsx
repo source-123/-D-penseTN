@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  ActivityIndicator, Alert, Pressable, RefreshControl,
+  ActivityIndicator, Pressable, RefreshControl,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store/auth.store';
@@ -10,9 +10,10 @@ import {
   getBudgetsForMonth, createBudget, deleteBudget, currentMonthKey,
 } from '@/services/budget.service';
 import { analyze, type AnalysisResult } from '@/features/budgets/rule503020';
+import { confirm, info } from '@/utils/confirm';
 import { colors, radius, spacing, typography } from '@/theme';
 import { formatCurrency } from '@/utils/formatCurrency';
-import type { Budget, Transaction } from '@/types';
+import type { Budget } from '@/types';
 
 export default function Analysis() {
   const router = useRouter();
@@ -32,7 +33,6 @@ export default function Analysis() {
         getBudgetsForMonth(user.uid),
       ]);
 
-      // On ne considère que le mois courant
       const now = new Date();
       const start = new Date(now.getFullYear(), now.getMonth(), 1);
       const monthTx = txs.filter((t) => t.date >= start);
@@ -59,67 +59,77 @@ export default function Analysis() {
 
   const applySuggestions = async () => {
     if (!user || !analysis) return;
+
     if (analysis.income <= 0) {
-      Alert.alert(
+      info(
         'Pas de revenu',
         'Ajoute d\'abord un revenu (ex: Salaire) pour pouvoir générer des budgets.'
       );
       return;
     }
 
-    Alert.alert(
-      'Appliquer la règle 50/30/20 ?',
-      `${analysis.suggestions.length} budgets vont être créés pour ce mois.`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Appliquer',
-          onPress: async () => {
-            setApplying(true);
-            try {
-              const month = currentMonthKey();
-              for (const s of analysis.suggestions) {
-                // Skip si un budget existe déjà pour cette catégorie
-                const exists = existingBudgets.find((b) => b.categoryId === s.categoryId);
-                if (exists) continue;
-                await createBudget(user.uid, {
-                  categoryId: s.categoryId,
-                  amount: s.amount,
-                  month,
-                });
-              }
-              Alert.alert('✅', 'Budgets créés. Va les voir dans l\'onglet Budgets.');
-              router.push('/(app)/budgets');
-            } catch (e: any) {
-              Alert.alert('Erreur', e?.message ?? 'Application échouée');
-            } finally {
-              setApplying(false);
-            }
-          },
-        },
-      ]
+    // Compter combien seront créés (skip ceux qui existent déjà)
+    const toCreate = analysis.suggestions.filter(
+      (s) => !existingBudgets.find((b) => b.categoryId === s.categoryId)
     );
+
+    if (toCreate.length === 0) {
+      info(
+        'Aucun nouveau budget',
+        `Les ${analysis.suggestions.length} budgets existent déjà pour ce mois. Utilise "Réinitialiser" pour les regénérer.`
+      );
+      return;
+    }
+
+    const ok = await confirm({
+      title: 'Appliquer la règle 50/30/20 ?',
+      message: `${toCreate.length} budget${toCreate.length > 1 ? 's' : ''} vont être créés pour ce mois.\n\n${toCreate.map((s) => `${s.icon} ${s.name} : ${s.amount} DT`).join('\n')}`,
+      confirmLabel: 'Appliquer',
+    });
+
+    if (!ok) return;
+
+    setApplying(true);
+    try {
+      const month = currentMonthKey();
+      for (const s of toCreate) {
+        await createBudget(user.uid, {
+          categoryId: s.categoryId,
+          amount: s.amount,
+          month,
+        });
+      }
+      info('✅', `${toCreate.length} budgets créés.`);
+      router.push('/(app)/budgets');
+    } catch (e: any) {
+      console.error('[analysis] apply error', e);
+      info('Erreur', e?.message ?? 'Application échouée');
+    } finally {
+      setApplying(false);
+    }
   };
 
-  const resetBudgets = () => {
+  const resetBudgets = async () => {
     if (!user || existingBudgets.length === 0) return;
-    Alert.alert(
-      'Réinitialiser ?',
-      `Supprimer les ${existingBudgets.length} budgets du mois ?`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            for (const b of existingBudgets) {
-              await deleteBudget(user.uid, b.id);
-            }
-            load();
-          },
-        },
-      ]
-    );
+
+    const ok = await confirm({
+      title: 'Réinitialiser ?',
+      message: `Supprimer les ${existingBudgets.length} budgets du mois ?`,
+      confirmLabel: 'Supprimer',
+      destructive: true,
+    });
+
+    if (!ok) return;
+
+    try {
+      for (const b of existingBudgets) {
+        await deleteBudget(user.uid, b.id);
+      }
+      await load();
+      info('✅', 'Budgets réinitialisés.');
+    } catch (e: any) {
+      info('Erreur', e?.message ?? 'Suppression échouée');
+    }
   };
 
   if (loading) {
@@ -135,7 +145,7 @@ export default function Analysis() {
   if (!analysis) return null;
 
   const { income, expenses, savings, savingsRate, targetSavings, suggestions } = analysis;
-  const barWidth = Math.min(savingsRate, 100);
+  const barWidth = Math.min(Math.max(savingsRate, 0), 100);
   const isHealthy = savingsRate >= 20;
 
   return (
@@ -158,7 +168,6 @@ export default function Analysis() {
           <Text style={styles.subtitle}>Règle 50 / 30 / 20</Text>
         </View>
 
-        {/* ─── Résumé du mois ─── */}
         <View style={styles.summary}>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Revenu du mois</Text>
@@ -182,7 +191,6 @@ export default function Analysis() {
             </Text>
           </View>
 
-          {/* Barre de progression épargne */}
           <View style={styles.progressHeader}>
             <Text style={styles.progressLabel}>
               Taux d'épargne : <Text style={styles.progressValue}>{savingsRate.toFixed(1)}%</Text>
@@ -210,7 +218,6 @@ export default function Analysis() {
           </View>
         </View>
 
-        {/* ─── Suggestion 50/30/20 ─── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Répartition suggérée</Text>
           <Text style={styles.sectionHint}>
@@ -225,7 +232,6 @@ export default function Analysis() {
             </View>
           ) : (
             <>
-              {/* Besoins */}
               <Text style={styles.groupTitle}>🏠 Besoins · 50%</Text>
               {suggestions
                 .filter((s) => s.group === 'needs')
@@ -236,7 +242,6 @@ export default function Analysis() {
                   </View>
                 ))}
 
-              {/* Envies */}
               <Text style={[styles.groupTitle, { marginTop: spacing.lg }]}>
                 🎉 Envies · 30%
               </Text>
@@ -249,7 +254,6 @@ export default function Analysis() {
                   </View>
                 ))}
 
-              {/* Épargne */}
               <Text style={[styles.groupTitle, { marginTop: spacing.lg }]}>
                 💰 Épargne · 20%
               </Text>
@@ -263,7 +267,6 @@ export default function Analysis() {
           )}
         </View>
 
-        {/* ─── Actions ─── */}
         {income > 0 && (
           <View style={styles.actions}>
             <Pressable
@@ -304,7 +307,6 @@ const styles = StyleSheet.create({
   title: { ...typography.h2, color: colors.text },
   subtitle: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
 
-  // Summary
   summary: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -355,7 +357,6 @@ const styles = StyleSheet.create({
   },
   statusText: { ...typography.caption, color: colors.text, lineHeight: 18 },
 
-  // Section
   section: { marginBottom: spacing.lg },
   sectionTitle: { ...typography.h3, color: colors.text, marginBottom: spacing.xs },
   sectionHint: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.md },
@@ -385,7 +386,6 @@ const styles = StyleSheet.create({
   },
   emptyText: { ...typography.body, color: colors.textMuted, textAlign: 'center', lineHeight: 22 },
 
-  // Actions
   actions: { marginTop: spacing.md, gap: spacing.sm },
   applyBtn: {
     backgroundColor: colors.primary,

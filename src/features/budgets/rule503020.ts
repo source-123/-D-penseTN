@@ -1,24 +1,18 @@
 import type { CategoryDef } from '@/features/transactions/categories';
 
+export type BudgetGroup = 'needs' | 'wants';
+
 export interface RuleCategory extends CategoryDef {
-  share: number;      // part du revenu (0..1)
-  group: 'needs' | 'wants' | 'savings';
+  share: number;
+  group: BudgetGroup;
 }
 
-/**
- * Règle 50/30/20 adaptée au contexte tunisien.
- *   Besoins : 50%   (logement, courses, transport, factures)
- *   Envies  : 30%   (restaurant, loisirs, santé, autre)
- *   Épargne : 20%   (calculée par différence)
- */
 export const RULE_503020: RuleCategory[] = [
-  // ─── Besoins (50%) ───
   { id: 'logement',  name: 'Logement',  icon: '🏠', share: 0.285, group: 'needs' },
   { id: 'courses',   name: 'Courses',   icon: '🛒', share: 0.143, group: 'needs' },
   { id: 'transport', name: 'Transport', icon: '🚕', share: 0.043, group: 'needs' },
   { id: 'factures',  name: 'Factures',  icon: '📱', share: 0.029, group: 'needs' },
 
-  // ─── Envies (30%) ───
   { id: 'restaurant', name: 'Restaurant', icon: '🍔', share: 0.114, group: 'wants' },
   { id: 'loisirs',    name: 'Loisirs',    icon: '🎬', share: 0.086, group: 'wants' },
   { id: 'sante',      name: 'Santé',      icon: '💊', share: 0.043, group: 'wants' },
@@ -32,7 +26,7 @@ export interface SuggestedBudget {
   name: string;
   icon: string;
   amount: number;
-  group: 'needs' | 'wants';
+  group: BudgetGroup;
 }
 
 export function computeSuggestions(monthlyIncome: number): SuggestedBudget[] {
