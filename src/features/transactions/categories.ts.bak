@@ -1,4 +1,5 @@
-// ⚠️ Version statique FR pour debug crash Android
+import { i18n } from '@/i18n';
+
 export interface CategoryDef {
   id: string;
   name: string;
@@ -16,10 +17,16 @@ export const CATEGORIES: CategoryDef[] = [
   { id: 'autre', name: 'Autre', icon: '📦' },
 ];
 
+/** Retourne la catégorie avec son nom traduit */
 export function getCategory(id: string): CategoryDef {
-  return CATEGORIES.find((c) => c.id === id) ?? CATEGORIES[CATEGORIES.length - 1];
+  const found = CATEGORIES.find((c) => c.id === id) ?? CATEGORIES[CATEGORIES.length - 1];
+  return {
+    ...found,
+    name: i18n.t(`categories.${found.id}`),
+  };
 }
 
+/** Liste complète traduite */
 export function getCategories(): CategoryDef[] {
-  return CATEGORIES;
+  return CATEGORIES.map((c) => ({ ...c, name: i18n.t(`categories.${c.id}`) }));
 }

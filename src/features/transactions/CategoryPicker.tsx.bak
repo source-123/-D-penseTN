@@ -1,16 +1,7 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { colors, radius, spacing, typography } from '@/theme';
-
-const CATS = [
-  { id: 'restaurant', name: 'Restaurant', icon: '🍔' },
-  { id: 'courses', name: 'Courses', icon: '🛒' },
-  { id: 'transport', name: 'Transport', icon: '🚕' },
-  { id: 'logement', name: 'Logement', icon: '🏠' },
-  { id: 'sante', name: 'Santé', icon: '💊' },
-  { id: 'loisirs', name: 'Loisirs', icon: '🎬' },
-  { id: 'factures', name: 'Factures', icon: '📱' },
-  { id: 'autre', name: 'Autre', icon: '📦' },
-];
+import { getCategories } from './categories';
+import { useT } from '@/store/language.store';
 
 interface Props {
   value: string;
@@ -19,10 +10,14 @@ interface Props {
 }
 
 export function CategoryPicker({ value, onChange, error }: Props) {
+  const { t } = useT();
+  const cats = getCategories();
+
   return (
     <View style={styles.wrapper}>
+      <Text style={styles.label}>{t('categories.restaurant') ? '' : ''}{' '}</Text>
       <View style={styles.grid}>
-        {CATS.map((cat) => {
+        {cats.map((cat) => {
           const selected = cat.id === value;
           return (
             <Pressable
@@ -45,12 +40,25 @@ export function CategoryPicker({ value, onChange, error }: Props) {
 
 const styles = StyleSheet.create({
   wrapper: { marginBottom: spacing.md },
+  label: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginBottom: spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontSize: 0,
+  },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
-    borderRadius: radius.pill, backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipIcon: { fontSize: 18 },
