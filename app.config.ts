@@ -13,6 +13,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     bundleIdentifier: 'tn.depensetn.app',
     infoPlist: {
       UIBackgroundModes: ['remote-notification'],
+      NSMicrophoneUsageDescription:
+        'DépenseTN a besoin du micro pour la saisie vocale.',
+      NSSpeechRecognitionUsageDescription:
+        'DépenseTN utilise la reconnaissance vocale pour créer des transactions.',
     },
   },
   android: {
@@ -26,6 +30,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'POST_NOTIFICATIONS',
       'VIBRATE',
       'RECEIVE_BOOT_COMPLETED',
+      'RECORD_AUDIO',
     ],
   },
   web: {
@@ -49,6 +54,18 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         icon: './assets/icon.png',
         color: '#10B981',
         sounds: [],
+      },
+    ],
+    [
+      'expo-speech-recognition',
+      {
+        microphonePermission:
+          'Autorise DépenseTN à accéder au micro pour la saisie vocale.',
+        speechRecognitionPermission:
+          'Autorise DépenseTN à utiliser la reconnaissance vocale.',
+        androidSpeechServicePackages: [
+          'com.google.android.googlequicksearchbox',
+        ],
       },
     ],
   ],
