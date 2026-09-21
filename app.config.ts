@@ -11,6 +11,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'tn.depensetn.app',
+    infoPlist: {
+      UIBackgroundModes: ['remote-notification'],
+    },
   },
   android: {
     package: 'tn.depensetn.app',
@@ -18,7 +21,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#0A0E14',
     },
-    permissions: ['NOTIFICATIONS'],
+    permissions: [
+      'NOTIFICATIONS',
+      'POST_NOTIFICATIONS',
+      'VIBRATE',
+      'RECEIVE_BOOT_COMPLETED',
+    ],
   },
   web: {
     bundler: 'metro',
@@ -33,6 +41,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         imageWidth: 200,
         resizeMode: 'contain',
         backgroundColor: '#0A0E14',
+      },
+    ],
+    [
+      'expo-notifications',
+      {
+        icon: './assets/icon.png',
+        color: '#10B981',
+        sounds: [],
       },
     ],
   ],

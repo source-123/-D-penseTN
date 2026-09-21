@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
-// Configuration du handler de notifications (natif uniquement)
+// ─── Config handler (notifications en foreground) ───
 if (Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -11,9 +11,26 @@ if (Platform.OS !== 'web') {
       shouldSetBadge: false,
     }),
   });
+
+  // ─── Channel Android (obligatoire Android 8+) ───
+  if (Platform.OS === 'android') {
+    Notifications.setNotificationChannelAsync('default', {
+      name: 'DépenseTN',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#10B981',
+      sound: 'default',
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    }).catch((e) => console.warn('[notif] channel failed', e));
+  }
 }
 
+/**
+ * Demande la permission d'afficher des notifications.
+ * Sur Android 13+, c'est obligatoire avant la première notif.
+ */
 export async function requestPermission(): Promise<boolean> {
+  // ─── Web ───
   if (Platform.OS === 'web') {
     if (typeof window === 'undefined' || !('Notification' in window)) return false;
     if (Notification.permission === 'granted') return true;
@@ -22,13 +39,31 @@ export async function requestPermission(): Promise<boolean> {
     return result === 'granted';
   }
 
-  const { status } = await Notifications.getPermissionsAsync();
-  if (status === 'granted') return true;
-  const req = await Notifications.requestPermissionsAsync();
-  return req.status === 'granted';
+  // ─── Natif ───
+  try {
+    const current = await Notifications.getPermissionsAsync();
+    if (current.granted) return true;
+    if (!current.canAskAgain) return false;
+
+    const req = await Notifications.requestPermissionsAsync({
+      ios: {
+        allowAlert: true,
+        allowBadge: true,
+        allowSound: true,
+      },
+    });
+    return req.granted;
+  } catch (e) {
+    console.warn('[notif] permission failed', e);
+    return false;
+  }
 }
 
+/**
+ * Affiche une notification immédiate.
+ */
 export async function notify(title: string, body: string): Promise<void> {
+  // ─── Web ───
   if (Platform.OS === 'web') {
     if (typeof window === 'undefined' || !('Notification' in window)) return;
     if (Notification.permission !== 'granted') return;
@@ -36,17 +71,31 @@ export async function notify(title: string, body: string): Promise<void> {
     return;
   }
 
-  await Notifications.scheduleNotificationAsync({
-    content: { title, body, sound: true },
-    trigger: null,
-  });
+  // ─── Natif ───
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        sound: 'default',
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+      },
+      trigger: null, // immédiat
+    });
+  } catch (e) {
+    console.warn('[notif] send failed', e);
+  }
 }
 
+/**
+ * Planifie un rappel quotidien à une heure donnée.
+ */
 export async function scheduleDaily(
   hour: number,
   minute: number,
   getBody: () => Promise<string>,
 ): Promise<string | null> {
+  // ─── Web ───
   if (Platform.OS === 'web') {
     const now = new Date();
     const target = new Date();
@@ -60,16 +109,28 @@ export async function scheduleDaily(
     return String(id);
   }
 
-  const body = await getBody();
-  const id = await Notifications.scheduleNotificationAsync({
-    content: { title: '💸 DépenseTN', body, sound: true },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour,
-      minute,
-    },
-  });
-  return id;
+  // ─── Natif ───
+  try {
+    const body = await getBody();
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '💸 DépenseTN',
+        body,
+        sound: 'default',
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour,
+        minute,
+        channelId: 'default',
+      },
+    });
+    return id;
+  } catch (e) {
+    console.warn('[notif] schedule failed', e);
+    return null;
+  }
 }
 
 export async function cancel(id: string): Promise<void> {
@@ -78,10 +139,18 @@ export async function cancel(id: string): Promise<void> {
     if (!isNaN(n)) clearTimeout(n);
     return;
   }
-  await Notifications.cancelScheduledNotificationAsync(id);
+  try {
+    await Notifications.cancelScheduledNotificationAsync(id);
+  } catch (e) {
+    console.warn('[notif] cancel failed', e);
+  }
 }
 
 export async function cancelAll(): Promise<void> {
   if (Platform.OS === 'web') return;
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+  } catch (e) {
+    console.warn('[notif] cancelAll failed', e);
+  }
 }
