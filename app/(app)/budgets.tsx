@@ -147,7 +147,6 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: spacing.lg, left: spacing.lg, right: spacing.lg,
     backgroundColor: colors.primary, paddingVertical: spacing.md,
     borderRadius: radius.pill, alignItems: 'center',
-    boxShadow: '0 4px 12px rgba(16,185,129,0.4)',
   },
   fabText: { ...typography.button, color: colors.background },
 });

@@ -5,7 +5,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/services/firebase';
 import { useAuthStore } from '@/store/auth.store';
 import { useLangStore } from '@/store/language.store';
-import { useBalanceReminder } from '@/features/notifications/useBalanceReminder';
+// import { useBalanceReminder } from '@/features/notifications/useBalanceReminder';
 import { colors } from '@/theme';
 import type { User } from '@/types';
 
@@ -19,7 +19,7 @@ export default function RootLayout() {
   useEffect(() => { hydrate(); }, []);
 
   // Rappels
-  useBalanceReminder();
+  // useBalanceReminder();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (fbUser) => {

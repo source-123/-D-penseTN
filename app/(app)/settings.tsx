@@ -6,7 +6,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useNotifStore } from '@/store/notification.store';
 import { useLangStore, useT } from '@/store/language.store';
-import { useBalanceReminder } from '@/features/notifications/useBalanceReminder';
+// import { useBalanceReminder } from '@/features/notifications/useBalanceReminder';
 import { confirm, info } from '@/utils/confirm';
 import { colors, radius, spacing, typography } from '@/theme';
 import { formatCurrency } from '@/utils/formatCurrency';
@@ -25,7 +25,7 @@ export default function Settings() {
   const { t, lang, isRTL } = useT();
   const s = useNotifStore();
   const { setLang } = useLangStore();
-  const { testNow } = useBalanceReminder();
+  const testNow = async () => ({ ok: false, message: 'Désactivé pour debug' });
   const [testing, setTesting] = useState(false);
 
   const handleEnableToggle = async (value: boolean) => {
