@@ -10,10 +10,12 @@ import { Input } from '@/components/Input';
 import { signIn, signUp } from '@/services/auth.service';
 import { loginSchema, type LoginInput } from '@/utils/validators';
 import { useT } from '@/store/language.store';
-import { colors, spacing, typography, radius } from '@/theme';
+import { useTheme } from '@/store/theme.store';
+import { spacing, typography, radius } from '@/theme';
 
 export default function Login() {
   const { t, isRTL } = useT();
+  const { colors: tc } = useTheme();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [loading, setLoading] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -46,21 +48,25 @@ export default function Login() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} enabled={Platform.OS === "ios"}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: tc.background }]}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        enabled={Platform.OS === 'ios'}
+      >
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <View style={styles.logoWrap}>
+            <View style={[styles.logoWrap, { backgroundColor: tc.primaryGlow, borderColor: tc.primaryGlowStrong }]}>
               <Text style={styles.emoji}>💸</Text>
             </View>
-            <Text style={[styles.title, isRTL && styles.textRight]}>
+            <Text style={[styles.title, { color: tc.text }, isRTL && styles.textRight]}>
               {mode === 'login' ? t('login.loginTitle') : t('login.signupTitle')}
             </Text>
-            <Text style={[styles.subtitle, isRTL && styles.textRight]}>
+            <Text style={[styles.subtitle, { color: tc.textMuted }, isRTL && styles.textRight]}>
               {mode === 'login' ? t('login.loginSubtitle') : t('login.signupSubtitle')}
             </Text>
           </View>
@@ -100,9 +106,9 @@ export default function Login() {
             />
 
             {globalError ? (
-              <View style={styles.errorBox}>
+              <View style={[styles.errorBox, { backgroundColor: tc.dangerGlow, borderColor: tc.danger }]}>
                 <Text style={styles.errorIcon}>⚠️</Text>
-                <Text style={styles.errorText}>{globalError}</Text>
+                <Text style={[styles.errorText, { color: tc.dangerLight }]}>{globalError}</Text>
               </View>
             ) : null}
 
@@ -118,9 +124,9 @@ export default function Login() {
             onPress={() => { setMode(mode === 'login' ? 'signup' : 'login'); setGlobalError(null); }}
             style={styles.switchBtn}
           >
-            <Text style={styles.switchText}>
+            <Text style={[styles.switchText, { color: tc.textMuted }]}>
               {mode === 'login' ? t('login.switchSignup') : t('login.switchLogin')}
-              <Text style={styles.switchLink}>
+              <Text style={[styles.switchLink, { color: tc.primary }]}>
                 {mode === 'login' ? t('login.switchSignupLink') : t('login.switchLoginLink')}
               </Text>
             </Text>
@@ -132,27 +138,26 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
+  safe: { flex: 1 },
   scroll: { padding: spacing.lg, flexGrow: 1, justifyContent: 'center' },
   header: { alignItems: 'center', marginBottom: spacing.xl },
   logoWrap: {
     width: 80, height: 80, borderRadius: 24,
-    backgroundColor: colors.primaryGlow, alignItems: 'center', justifyContent: 'center',
-    marginBottom: spacing.lg, borderWidth: 1, borderColor: colors.primaryGlowStrong,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: spacing.lg, borderWidth: 1,
   },
   emoji: { fontSize: 42 },
-  title: { ...typography.h2, color: colors.text, marginBottom: spacing.xs, textAlign: 'center' },
-  subtitle: { ...typography.body, color: colors.textMuted, textAlign: 'center', lineHeight: 22 },
+  title: { ...typography.h2, marginBottom: spacing.xs, textAlign: 'center' },
+  subtitle: { ...typography.body, textAlign: 'center', lineHeight: 22 },
   textRight: { textAlign: 'right', alignSelf: 'stretch' },
   form: { marginBottom: spacing.lg },
   errorBox: {
-    flexDirection: 'row', backgroundColor: colors.dangerGlow,
-    borderWidth: 1, borderColor: colors.danger, borderRadius: radius.md,
+    flexDirection: 'row', borderWidth: 1, borderRadius: radius.md,
     padding: spacing.md, marginTop: spacing.sm, gap: spacing.sm, alignItems: 'center',
   },
   errorIcon: { fontSize: 18 },
-  errorText: { ...typography.caption, color: colors.dangerLight, flex: 1 },
+  errorText: { ...typography.caption, flex: 1 },
   switchBtn: { alignItems: 'center', padding: spacing.md },
-  switchText: { ...typography.caption, color: colors.textMuted },
-  switchLink: { color: colors.primary, fontWeight: '700' },
+  switchText: { ...typography.caption },
+  switchLink: { fontWeight: '700' },
 });

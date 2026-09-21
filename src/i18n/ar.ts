@@ -14,6 +14,16 @@ export default {
     feature1: 'تتبع فوري', feature2: 'ميزانيات ذكية',
     feature3: 'إدخال صوتي', cta: 'ابدأ الآن',
     footer: 'مجاني · صنع في تونس 🇹🇳',
+    howTitle: 'كيف يعمل التطبيق؟',
+    howStep1Title: 'أضف دخلك',
+    howStep1Desc: 'ابدأ بتسجيل راتبك.',
+    howStep2Title: 'سجّل مصروفاتك',
+    howStep2Desc: 'في 3 ثوان، أو بالصوت 🎤',
+    howStep3Title: 'حدّد ميزانيات',
+    howStep3Desc: 'تحكّم في الحدود حسب الفئة.',
+    howStep4Title: 'وفّر المال',
+    howStep4Desc: 'تابع مدخراتك وحقّق أهدافك.',
+    swipeHint: 'اسحب للاستكشاف',
   },
   login: {
     loginTitle: 'مرحباً بعودتك',
@@ -101,8 +111,9 @@ export default {
     legendExpenses: 'مصروفات', legendIncome: 'إيرادات',
   },
   settings: {
-    title: 'الإعدادات', subtitle: 'اللغة، الإشعارات والتفضيلات',
+    title: 'الإعدادات', subtitle: 'اللغة، الثيم والإشعارات',
     language: '🌍 اللغة',
+    theme: '🎨 الثيم',
     notifTitle: 'الإشعارات',
     notifEnabled: '🔔 تفعيل الإشعارات',
     notifEnabledSub: 'استقبل تذكيرات حول رصيدك وميزانياتك',
@@ -130,5 +141,9 @@ export default {
     nothingMsg: 'أملِ أو اكتب جملة مثل "18 دينار مطعم غداء".',
     analyzed: 'تم التحليل ✅', invalidAmount: 'مبلغ غير صحيح.',
     created: 'تم إنشاء المعاملة!',
+  },
+  themes: {
+    emerald: 'زمردي', ocean: 'محيطي', rose: 'وردي',
+    midnight: 'منتصف الليل', light: 'فاتح',
   },
 };

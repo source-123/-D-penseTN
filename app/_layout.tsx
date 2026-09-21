@@ -5,20 +5,23 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/services/firebase';
 import { useAuthStore } from '@/store/auth.store';
 import { useLangStore } from '@/store/language.store';
+import { useThemeStore } from '@/store/theme.store';
 import { useBalanceReminder } from '@/features/notifications/useBalanceReminder';
 import { colors } from '@/theme';
 import type { User } from '@/types';
 
 export default function RootLayout() {
   const { user, loading, setUser, setLoading } = useAuthStore();
-  const { hydrate, hydrated } = useLangStore();
+  const { hydrate: hydrateLang, hydrated: langHydrated } = useLangStore();
+  const { hydrate: hydrateTheme, hydrated: themeHydrated } = useThemeStore();
   const segments = useSegments();
   const router = useRouter();
 
-  // Hydrater la langue au démarrage
-  useEffect(() => { hydrate(); }, [hydrate]);
+  // Hydrater langue + thème
+  useEffect(() => { hydrateLang(); }, [hydrateLang]);
+  useEffect(() => { hydrateTheme(); }, [hydrateTheme]);
 
-  // Rappels notifications (solde + budget)
+  // Rappels notifications
   useBalanceReminder();
 
   // Firebase Auth listener
@@ -38,14 +41,14 @@ export default function RootLayout() {
     return unsub;
   }, [setUser, setLoading]);
 
-  // Redirection selon l'état
+  // Redirection
   useEffect(() => {
-    if (loading || !hydrated) return;
+    if (loading || !langHydrated || !themeHydrated) return;
     const inAuthGroup = segments[0] === '(auth)';
     const inAppGroup = segments[0] === '(app)';
     if (!user && inAppGroup) router.replace('/(auth)/login');
     else if (user && inAuthGroup) router.replace('/(app)/dashboard');
-  }, [user, loading, segments, hydrated, router]);
+  }, [user, loading, segments, langHydrated, themeHydrated, router]);
 
   return (
     <>

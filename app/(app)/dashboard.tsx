@@ -5,12 +5,13 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store/auth.store';
+import { useT } from '@/store/language.store';
+import { useTheme } from '@/store/theme.store';
 import { getTransactions } from '@/services/firestore.service';
 import { signOutUser } from '@/services/auth.service';
 import { getCategory } from '@/features/transactions/categories';
 import { confirm } from '@/utils/confirm';
-import { useT } from '@/store/language.store';
-import { colors, radius, spacing, typography, shadows } from '@/theme';
+import { spacing, typography, radius, shadows } from '@/theme';
 import { formatCurrency } from '@/utils/formatCurrency';
 import type { Transaction } from '@/types';
 
@@ -18,6 +19,7 @@ export default function Dashboard() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { t, isRTL } = useT();
+  const { colors: tc } = useTheme();
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +42,7 @@ export default function Dashboard() {
 
   const handleLogout = async () => {
     const ok = await confirm({
-      title: t('dash.logoutConfirm'),
+      title: t('common.confirm'),
       message: t('dash.logoutConfirm'),
       confirmLabel: t('common.confirm'),
       destructive: true,
@@ -51,21 +53,12 @@ export default function Dashboard() {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const totalIncome = transactions
-    .filter((t) => t.type === 'income')
-    .reduce((s, t) => s + t.amount, 0);
-  const totalExpenses = transactions
-    .filter((t) => t.type === 'expense')
-    .reduce((s, t) => s + t.amount, 0);
+  const totalIncome = transactions.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const totalExpenses = transactions.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
   const balance = totalIncome - totalExpenses;
 
-  const monthIncome = transactions
-    .filter((t) => t.type === 'income' && t.date >= startOfMonth)
-    .reduce((s, t) => s + t.amount, 0);
-  const monthExpenses = transactions
-    .filter((t) => t.type === 'expense' && t.date >= startOfMonth)
-    .reduce((s, t) => s + t.amount, 0);
-
+  const monthIncome = transactions.filter((t) => t.type === 'income' && t.date >= startOfMonth).reduce((s, t) => s + t.amount, 0);
+  const monthExpenses = transactions.filter((t) => t.type === 'expense' && t.date >= startOfMonth).reduce((s, t) => s + t.amount, 0);
   const monthSavings = monthIncome - monthExpenses;
   const savingsRate = monthIncome > 0 ? (monthSavings / monthIncome) * 100 : 0;
 
@@ -81,174 +74,132 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={[styles.safe, { backgroundColor: tc.background }]}>
         <View style={styles.center}>
-          <ActivityIndicator color={colors.primary} size="large" />
+          <ActivityIndicator color={tc.primary} size="large" />
         </View>
       </SafeAreaView>
     );
   }
 
   const isBalancePositive = balance >= 0;
-  const monthLabel = new Intl.DateTimeFormat('fr-FR', {
-    month: 'long',
-    year: 'numeric',
-  }).format(now);
+  const monthLabel = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(now);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: tc.background }]}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => { setRefreshing(true); loadData(); }}
-            tintColor={colors.primary}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} tintColor={tc.primary} />
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* ─── Header ─── */}
+        {/* Header */}
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.greeting}>{t('dash.greeting')}</Text>
-            <Text style={styles.email} numberOfLines={1}>
-              {user?.email}
-            </Text>
+            <Text style={[styles.greeting, { color: tc.text }]}>{t('dash.greeting')}</Text>
+            <Text style={[styles.email, { color: tc.textMuted }]} numberOfLines={1}>{user?.email}</Text>
           </View>
           <View style={styles.headerActions}>
             <Pressable
               onPress={() => router.push('/(app)/settings')}
-              style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
+              style={[styles.iconBtn, { backgroundColor: tc.surface, borderColor: tc.border }]}
             >
               <Text style={styles.iconEmoji}>🔔</Text>
             </Pressable>
             <Pressable
               onPress={handleLogout}
-              style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
+              style={[styles.iconBtn, { backgroundColor: tc.surface, borderColor: tc.border }]}
             >
               <Text style={styles.iconEmoji}>↪</Text>
             </Pressable>
           </View>
         </View>
 
-        {/* ─── Balance Card ─── */}
-        <View style={[styles.balanceCard, shadows.card]}>
-          <View style={styles.balanceGlow} />
-          <Text style={styles.balanceLabel}>{t('dash.balanceTotal')}</Text>
-          <Text
-            style={[
-              styles.balanceValue,
-              { color: isBalancePositive ? colors.primary : colors.danger },
-            ]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-          >
+        {/* Balance Card */}
+        <View style={[styles.balanceCard, { backgroundColor: tc.surface, borderColor: tc.border }, shadows.card]}>
+          <View style={[styles.balanceGlow, { backgroundColor: tc.primaryGlow }]} />
+          <Text style={[styles.balanceLabel, { color: tc.textMuted }]}>{t('dash.balanceTotal')}</Text>
+          <Text style={[styles.balanceValue, { color: isBalancePositive ? tc.primary : tc.danger }]} numberOfLines={1} adjustsFontSizeToFit>
             {formatCurrency(balance)}
           </Text>
-          <Text style={styles.balanceMonth}>{monthLabel}</Text>
+          <Text style={[styles.balanceMonth, { color: tc.textFaint }]}>{monthLabel}</Text>
 
-          <View style={styles.statsRow}>
+          <View style={[styles.statsRow, { borderTopColor: tc.border }]}>
             <View style={styles.statCol}>
-              <View style={[styles.statIcon, { backgroundColor: colors.primaryGlow }]}>
+              <View style={[styles.statIcon, { backgroundColor: tc.primaryGlow }]}>
                 <Text style={styles.statIconText}>↓</Text>
               </View>
-              <Text style={styles.statLabel}>{t('dash.income')}</Text>
-              <Text style={[styles.statValue, { color: colors.primary }]}>
-                +{formatCurrency(monthIncome, { withSymbol: false })}
-              </Text>
+              <Text style={[styles.statLabel, { color: tc.textMuted }]}>{t('dash.income')}</Text>
+              <Text style={[styles.statValue, { color: tc.primary }]}>+{formatCurrency(monthIncome, { withSymbol: false })}</Text>
             </View>
-
-            <View style={styles.statDivider} />
-
+            <View style={[styles.statDivider, { backgroundColor: tc.border }]} />
             <View style={styles.statCol}>
-              <View style={[styles.statIcon, { backgroundColor: colors.dangerGlow }]}>
+              <View style={[styles.statIcon, { backgroundColor: tc.dangerGlow }]}>
                 <Text style={styles.statIconText}>↑</Text>
               </View>
-              <Text style={styles.statLabel}>{t('dash.expenses')}</Text>
-              <Text style={[styles.statValue, { color: colors.danger }]}>
-                -{formatCurrency(monthExpenses, { withSymbol: false })}
-              </Text>
+              <Text style={[styles.statLabel, { color: tc.textMuted }]}>{t('dash.expenses')}</Text>
+              <Text style={[styles.statValue, { color: tc.danger }]}>-{formatCurrency(monthExpenses, { withSymbol: false })}</Text>
             </View>
           </View>
 
           {monthIncome > 0 && (
             <View style={styles.savingsBlock}>
               <View style={styles.savingsHeader}>
-                <Text style={styles.savingsLabel}>{t('dash.savingsMonth')}</Text>
-                <Text
-                  style={[
-                    styles.savingsPercent,
-                    { color: savingsRate >= 20 ? colors.primary : colors.warning },
-                  ]}
-                >
+                <Text style={[styles.savingsLabel, { color: tc.textSecondary }]}>{t('dash.savingsMonth')}</Text>
+                <Text style={[styles.savingsPercent, { color: savingsRate >= 20 ? tc.primary : tc.warning }]}>
                   {savingsRate.toFixed(0)}%
                 </Text>
               </View>
-              <View style={styles.savingsBar}>
-                <View
-                  style={[
-                    styles.savingsFill,
-                    {
-                      width: `${Math.min(Math.max(savingsRate, 0), 100)}%`,
-                      backgroundColor: savingsRate >= 20 ? colors.primary : colors.warning,
-                    },
-                  ]}
-                />
+              <View style={[styles.savingsBar, { backgroundColor: tc.surfaceAlt }]}>
+                <View style={[styles.savingsFill, {
+                  width: `${Math.min(Math.max(savingsRate, 0), 100)}%`,
+                  backgroundColor: savingsRate >= 20 ? tc.primary : tc.warning,
+                }]} />
               </View>
-              <Text style={styles.savingsHint}>
-                {savingsRate >= 20
-                  ? `✅ Objectif atteint (${formatCurrency(monthSavings)})`
-                  : `Objectif : 20% · Il te manque ${formatCurrency(Math.max(0, monthIncome * 0.2 - monthSavings))}`}
-              </Text>
             </View>
           )}
         </View>
 
-        {/* ─── Quick actions ─── */}
-        <Text style={styles.sectionTitle}>{t('dash.shortcuts')}</Text>
+        {/* Quick actions */}
+        <Text style={[styles.sectionTitle, { color: tc.text }]}>{t('dash.shortcuts')}</Text>
         <View style={styles.quickGrid}>
-          <QuickAction icon="📋" label={t('dash.tx')} onPress={() => router.push('/(app)/transactions')} />
-          <QuickAction icon="🎯" label={t('dash.budgets')} onPress={() => router.push('/(app)/budgets')} />
-          <QuickAction icon="📈" label={t('dash.analysis')} onPress={() => router.push('/(app)/analysis')} />
-          <QuickAction icon="📊" label={t('dash.stats')} onPress={() => router.push('/(app)/statistics')} />
+          <QuickAction icon="📋" label={t('dash.tx')} onPress={() => router.push('/(app)/transactions')} tc={tc} />
+          <QuickAction icon="🎯" label={t('dash.budgets')} onPress={() => router.push('/(app)/budgets')} tc={tc} />
+          <QuickAction icon="📈" label={t('dash.analysis')} onPress={() => router.push('/(app)/analysis')} tc={tc} />
+          <QuickAction icon="📊" label={t('dash.stats')} onPress={() => router.push('/(app)/statistics')} tc={tc} />
         </View>
 
-        {/* ─── Dépenses ─── */}
+        {/* Dépenses */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{t('dash.monthExpenses')}</Text>
+          <Text style={[styles.sectionTitle, { color: tc.text }]}>{t('dash.monthExpenses')}</Text>
           {categoryTotals.length > 0 && (
             <Pressable onPress={() => router.push('/(app)/transactions')}>
-              <Text style={styles.seeAll}>{t('dash.seeAll')}</Text>
+              <Text style={[styles.seeAll, { color: tc.primary }]}>{t('dash.seeAll')}</Text>
             </Pressable>
           )}
         </View>
 
         {categoryTotals.length === 0 ? (
-          <View style={styles.emptyCard}>
+          <View style={[styles.emptyCard, { backgroundColor: tc.surface, borderColor: tc.border }]}>
             <Text style={styles.emptyIcon}>💸</Text>
-            <Text style={styles.emptyTitle}>{t('dash.emptyTitle')}</Text>
-            <Text style={styles.emptyText}>
-              {t('dash.emptyText')}
-            </Text>
+            <Text style={[styles.emptyTitle, { color: tc.text }]}>{t('dash.emptyTitle')}</Text>
+            <Text style={[styles.emptyText, { color: tc.textMuted }]}>{t('dash.emptyText')}</Text>
           </View>
         ) : (
-          <View style={styles.listCard}>
+          <View style={[styles.listCard, { backgroundColor: tc.surface, borderColor: tc.border }]}>
             {categoryTotals.map(({ categoryId, total }, index) => {
               const cat = getCategory(categoryId);
               const isLast = index === categoryTotals.length - 1;
               return (
-                <View
-                  key={categoryId}
-                  style={[styles.listRow, isLast && { borderBottomWidth: 0 }]}
-                >
+                <View key={categoryId} style={[styles.listRow, { borderBottomColor: tc.border }, isLast && { borderBottomWidth: 0 }]}>
                   <View style={styles.listLeft}>
-                    <View style={styles.listIcon}>
+                    <View style={[styles.listIcon, { backgroundColor: tc.surfaceAlt }]}>
                       <Text style={styles.listIconText}>{cat.icon}</Text>
                     </View>
-                    <Text style={styles.listLabel}>{cat.name}</Text>
+                    <Text style={[styles.listLabel, { color: tc.text }]}>{cat.name}</Text>
                   </View>
-                  <Text style={styles.listAmount}>{formatCurrency(total)}</Text>
+                  <Text style={[styles.listAmount, { color: tc.text }]}>{formatCurrency(total)}</Text>
                 </View>
               );
             })}
@@ -258,269 +209,88 @@ export default function Dashboard() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* ─── FAB Row ─── */}
-      <View style={[styles.fabRow, isRTL && { flexDirection: 'row-reverse' }]}>
+      {/* FAB Row */}
+      <View style={styles.fabRow}>
         <Pressable
-          style={({ pressed }) => [styles.fabMic, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [styles.fabMic, { backgroundColor: tc.surface, borderColor: tc.primary }, pressed && { opacity: 0.85 }]}
           onPress={() => router.push('/(app)/voice-input')}
         >
           <Text style={styles.fabMicText}>🎤</Text>
         </Pressable>
         <Pressable
-          style={({ pressed }) => [
-            styles.fabMain,
-            shadows.fab,
-            pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
-          ]}
+          style={({ pressed }) => [styles.fabMain, { backgroundColor: tc.primary }, shadows.fab, pressed && { opacity: 0.9 }]}
           onPress={() => router.push('/(app)/add-expense')}
         >
-          <Text style={styles.fabPlus}>+</Text>
-          <Text style={styles.fabText}>{t('common.add')}</Text>
+          <Text style={[styles.fabPlus, { color: tc.background }]}>+</Text>
+          <Text style={[styles.fabText, { color: tc.background }]}>{t('common.add')}</Text>
         </Pressable>
       </View>
     </SafeAreaView>
   );
 }
 
-function QuickAction({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) {
+function QuickAction({ icon, label, onPress, tc }: { icon: string; label: string; onPress: () => void; tc: any }) {
   return (
     <Pressable
-      style={({ pressed }) => [styles.quickBtn, pressed && styles.quickBtnPressed]}
+      style={({ pressed }) => [styles.quickBtn, { backgroundColor: tc.surface, borderColor: tc.border }, pressed && { opacity: 0.8 }]}
       onPress={onPress}
     >
       <Text style={styles.quickIcon}>{icon}</Text>
-      <Text style={styles.quickLabel}>{label}</Text>
+      <Text style={[styles.quickLabel, { color: tc.textSecondary }]}>{label}</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
+  safe: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
-
-  // ─── Header ───
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-    gap: spacing.sm,
-  },
-  greeting: { ...typography.h3, color: colors.text },
-  email: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.lg, gap: spacing.sm },
+  greeting: { ...typography.h3 },
+  email: { ...typography.caption, marginTop: 2 },
   headerActions: { flexDirection: 'row', gap: spacing.sm },
-  iconBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  iconBtnPressed: { backgroundColor: colors.surfaceAlt, opacity: 0.8 },
+  iconBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
   iconEmoji: { fontSize: 18 },
-
-  // ─── Balance Card ───
-  balanceCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-  },
-  balanceGlow: {
-    position: 'absolute',
-    top: -60,
-    right: -60,
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: colors.primaryGlow,
-  },
-  balanceLabel: {
-    ...typography.label,
-    color: colors.textMuted,
-    marginBottom: spacing.sm,
-  },
-  balanceValue: {
-    ...typography.display,
-    fontSize: 40,
-  },
-  balanceMonth: {
-    ...typography.caption,
-    color: colors.textFaint,
-    marginTop: 2,
-    textTransform: 'capitalize',
-  },
-
-  statsRow: {
-    flexDirection: 'row',
-    marginTop: spacing.lg,
-    paddingTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    alignItems: 'center',
-  },
+  balanceCard: { borderRadius: radius.xl, padding: spacing.lg, marginBottom: spacing.lg, borderWidth: 1, overflow: 'hidden' },
+  balanceGlow: { position: 'absolute', top: -60, right: -60, width: 180, height: 180, borderRadius: 90 },
+  balanceLabel: { ...typography.label, marginBottom: spacing.sm },
+  balanceValue: { ...typography.display, fontSize: 40 },
+  balanceMonth: { ...typography.caption, marginTop: 2, textTransform: 'capitalize' },
+  statsRow: { flexDirection: 'row', marginTop: spacing.lg, paddingTop: spacing.lg, borderTopWidth: 1, alignItems: 'center' },
   statCol: { flex: 1, alignItems: 'center' },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: colors.border,
-    marginHorizontal: spacing.md,
-  },
-  statIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xs,
-  },
-  statIconText: { color: colors.text, fontSize: 16, fontWeight: '700' },
-  statLabel: { ...typography.tiny, color: colors.textMuted, marginBottom: 2 },
+  statDivider: { width: 1, height: 40, marginHorizontal: spacing.md },
+  statIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
+  statIconText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  statLabel: { ...typography.tiny, marginBottom: 2 },
   statValue: { ...typography.bodyBold, fontSize: 15 },
-
   savingsBlock: { marginTop: spacing.lg },
-  savingsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  savingsLabel: { ...typography.caption, color: colors.textSecondary },
+  savingsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  savingsLabel: { ...typography.caption },
   savingsPercent: { ...typography.bodyBold, fontSize: 14 },
-  savingsBar: {
-    height: 8,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
+  savingsBar: { height: 8, borderRadius: 4, overflow: 'hidden' },
   savingsFill: { height: '100%', borderRadius: 4 },
-  savingsHint: {
-    ...typography.caption,
-    color: colors.textMuted,
-    marginTop: spacing.sm,
-  },
-
-  // ─── Section ───
-  sectionTitle: {
-    ...typography.h3,
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    marginTop: spacing.sm,
-  },
-  seeAll: { ...typography.caption, color: colors.primary, fontWeight: '600' },
-
-  // ─── Quick actions ───
-  quickGrid: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  quickBtn: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: spacing.xs,
-  },
-  quickBtnPressed: {
-    backgroundColor: colors.surfaceAlt,
-    borderColor: colors.borderLight,
-  },
+  sectionTitle: { ...typography.h3, marginBottom: spacing.md },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md, marginTop: spacing.sm },
+  seeAll: { ...typography.caption, fontWeight: '600' },
+  quickGrid: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
+  quickBtn: { flex: 1, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center', borderWidth: 1, gap: spacing.xs },
   quickIcon: { fontSize: 22 },
-  quickLabel: { ...typography.tiny, color: colors.textSecondary, fontSize: 10 },
-
-  // ─── List ───
-  listCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-  },
-  listRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
+  quickLabel: { ...typography.tiny, fontSize: 10 },
+  listCard: { borderRadius: radius.lg, borderWidth: 1, paddingHorizontal: spacing.md },
+  listRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 1 },
   listLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 },
-  listIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  listIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   listIconText: { fontSize: 20 },
-  listLabel: { ...typography.body, color: colors.text, fontWeight: '500' },
-  listAmount: { ...typography.bodyBold, color: colors.text },
-
-  // ─── Empty ───
-  emptyCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-  },
+  listLabel: { ...typography.body, fontWeight: '500' },
+  listAmount: { ...typography.bodyBold },
+  emptyCard: { borderRadius: radius.lg, padding: spacing.xl, borderWidth: 1, alignItems: 'center' },
   emptyIcon: { fontSize: 42, marginBottom: spacing.md },
-  emptyTitle: { ...typography.bodyBold, color: colors.text, marginBottom: spacing.xs },
-  emptyText: { ...typography.caption, color: colors.textMuted, textAlign: 'center' },
-
-  // ─── FAB ───
-  fabRow: {
-    position: 'absolute',
-    bottom: spacing.lg,
-    left: spacing.lg,
-    right: spacing.lg,
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  fabMic: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-  },
+  emptyTitle: { ...typography.bodyBold, marginBottom: spacing.xs },
+  emptyText: { ...typography.caption, textAlign: 'center' },
+  fabRow: { position: 'absolute', bottom: spacing.lg, left: spacing.lg, right: spacing.lg, flexDirection: 'row', gap: spacing.sm },
+  fabMic: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
   fabMicText: { fontSize: 24 },
-  fabMain: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: spacing.sm,
-    height: 58,
-  },
-  fabPlus: {
-    color: colors.background,
-    fontSize: 22,
-    fontWeight: '800',
-    marginTop: -2,
-  },
-  fabText: { ...typography.button, color: colors.background, fontSize: 16 },
+  fabMain: { flex: 1, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: spacing.sm, height: 58 },
+  fabPlus: { fontSize: 22, fontWeight: '800', marginTop: -2 },
+  fabText: { ...typography.button, fontSize: 16 },
 });

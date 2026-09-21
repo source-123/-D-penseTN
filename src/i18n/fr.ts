@@ -14,6 +14,16 @@ export default {
     feature1: 'Suivi en temps réel', feature2: 'Budgets intelligents',
     feature3: 'Saisie vocale', cta: 'Commencer',
     footer: 'Gratuit · Fait en Tunisie 🇹🇳',
+    howTitle: 'Comment ça marche ?',
+    howStep1Title: 'Ajoute ton revenu',
+    howStep1Desc: 'Commence par enregistrer ton salaire.',
+    howStep2Title: 'Note tes dépenses',
+    howStep2Desc: 'En 3 secondes, ou par la voix 🎤',
+    howStep3Title: 'Fixe des budgets',
+    howStep3Desc: 'Contrôle tes limites par catégorie.',
+    howStep4Title: 'Économise',
+    howStep4Desc: 'Suis ton épargne et atteins tes objectifs.',
+    swipeHint: 'Glisse pour découvrir',
   },
   login: {
     loginTitle: 'Content de te revoir',
@@ -101,8 +111,9 @@ export default {
     legendExpenses: 'Dépenses', legendIncome: 'Revenus',
   },
   settings: {
-    title: 'Paramètres', subtitle: 'Langue, notifications et préférences',
+    title: 'Paramètres', subtitle: 'Langue, thème, notifications',
     language: '🌍 Langue',
+    theme: '🎨 Thème',
     notifTitle: 'Notifications',
     notifEnabled: '🔔 Activer les notifications',
     notifEnabledSub: 'Reçois des rappels sur ton solde et tes budgets',
@@ -130,5 +141,9 @@ export default {
     nothingMsg: 'Dicte ou tape une phrase comme "18 dinars restaurant déjeuner".',
     analyzed: 'Analysé ✅', invalidAmount: 'Montant invalide.',
     created: 'Transaction créée !',
+  },
+  themes: {
+    emerald: 'Émeraude', ocean: 'Océan', rose: 'Rose',
+    midnight: 'Minuit', light: 'Clair',
   },
 };

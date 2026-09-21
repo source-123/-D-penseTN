@@ -14,6 +14,16 @@ export default {
     feature1: 'Real-time tracking', feature2: 'Smart budgets',
     feature3: 'Voice input', cta: 'Get Started',
     footer: 'Free · Made in Tunisia 🇹🇳',
+    howTitle: 'How it works',
+    howStep1Title: 'Add your income',
+    howStep1Desc: 'Start by recording your salary.',
+    howStep2Title: 'Log your expenses',
+    howStep2Desc: 'In 3 seconds, or by voice 🎤',
+    howStep3Title: 'Set budgets',
+    howStep3Desc: 'Control your limits by category.',
+    howStep4Title: 'Save money',
+    howStep4Desc: 'Track savings and reach your goals.',
+    swipeHint: 'Scroll to explore',
   },
   login: {
     loginTitle: 'Welcome back',
@@ -100,8 +110,9 @@ export default {
     legendExpenses: 'Expenses', legendIncome: 'Income',
   },
   settings: {
-    title: 'Settings', subtitle: 'Language, notifications and preferences',
+    title: 'Settings', subtitle: 'Language, theme, notifications',
     language: '🌍 Language',
+    theme: '🎨 Theme',
     notifTitle: 'Notifications',
     notifEnabled: '🔔 Enable notifications',
     notifEnabledSub: 'Get reminders about your balance and budgets',
@@ -129,5 +140,9 @@ export default {
     nothingMsg: 'Dictate or type a sentence like "18 dinars restaurant lunch".',
     analyzed: 'Analyzed ✅', invalidAmount: 'Invalid amount.',
     created: 'Transaction created!',
+  },
+  themes: {
+    emerald: 'Emerald', ocean: 'Ocean', rose: 'Rose',
+    midnight: 'Midnight', light: 'Light',
   },
 };
