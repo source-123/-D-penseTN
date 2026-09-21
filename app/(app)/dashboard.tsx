@@ -1,13 +1,14 @@
 import { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, Pressable,
-  ScrollView, ActivityIndicator, RefreshControl, Alert,
+  ScrollView, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store/auth.store';
 import { getTransactions } from '@/services/firestore.service';
 import { signOutUser } from '@/services/auth.service';
 import { getCategory } from '@/features/transactions/categories';
+import { confirm } from '@/utils/confirm';
 import { colors, radius, spacing, typography } from '@/theme';
 import { formatCurrency } from '@/utils/formatCurrency';
 import type { Transaction } from '@/types';
@@ -35,11 +36,14 @@ export default function Dashboard() {
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
-  const handleLogout = () => {
-    Alert.alert('Déconnexion', 'Tu veux vraiment te déconnecter ?', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Déconnexion', style: 'destructive', onPress: () => signOutUser() },
-    ]);
+  const handleLogout = async () => {
+    const ok = await confirm({
+      title: 'Déconnexion',
+      message: 'Tu veux vraiment te déconnecter ?',
+      confirmLabel: 'Déconnexion',
+      destructive: true,
+    });
+    if (ok) await signOutUser();
   };
 
   const now = new Date();
@@ -106,9 +110,18 @@ export default function Dashboard() {
               {user?.email}
             </Text>
           </View>
-          <Pressable onPress={handleLogout} style={styles.iconBtn}>
-            <Text style={styles.iconText}>↪</Text>
-          </Pressable>
+
+          <View style={styles.headerActions}>
+            <Pressable
+              onPress={() => router.push('/(app)/settings')}
+              style={styles.iconBtn}
+            >
+              <Text style={styles.iconText}>🔔</Text>
+            </Pressable>
+            <Pressable onPress={handleLogout} style={styles.iconBtn}>
+              <Text style={styles.iconText}>↪</Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* ─── Carte Solde ─── */}
@@ -138,7 +151,6 @@ export default function Dashboard() {
             </View>
           </View>
 
-          {/* Barre épargne */}
           {monthIncome > 0 && (
             <View style={styles.savingsBlock}>
               <View style={styles.savingsHeader}>
@@ -174,7 +186,7 @@ export default function Dashboard() {
             onPress={() => router.push('/(app)/transactions')}
           >
             <Text style={styles.quickIcon}>📋</Text>
-            <Text style={styles.quickLabel}>Transactions</Text>
+            <Text style={styles.quickLabel}>Trans.</Text>
           </Pressable>
           <Pressable
             style={styles.quickBtn}
@@ -187,8 +199,22 @@ export default function Dashboard() {
             style={styles.quickBtn}
             onPress={() => router.push('/(app)/analysis')}
           >
-            <Text style={styles.quickIcon}>📊</Text>
+            <Text style={styles.quickIcon}>📈</Text>
             <Text style={styles.quickLabel}>Analyse</Text>
+          </Pressable>
+          <Pressable
+            style={styles.quickBtn}
+            onPress={() => router.push('/(app)/statistics')}
+          >
+            <Text style={styles.quickIcon}>📊</Text>
+            <Text style={styles.quickLabel}>Stats</Text>
+          </Pressable>
+          <Pressable
+            style={styles.quickBtn}
+            onPress={() => router.push('/(app)/settings')}
+          >
+            <Text style={styles.quickIcon}>🔔</Text>
+            <Text style={styles.quickLabel}>Notifs</Text>
           </Pressable>
         </View>
 
@@ -205,7 +231,7 @@ export default function Dashboard() {
             <View style={styles.emptyBox}>
               <Text style={styles.emptyTitle}>Aucune dépense ce mois</Text>
               <Text style={styles.emptyText}>
-                Appuie sur "+ Ajouter" pour enregistrer ta première dépense.
+                Appuie sur "+ Ajouter" ou 🎤 pour enregistrer ta première dépense.
               </Text>
             </View>
           ) : (
@@ -224,13 +250,21 @@ export default function Dashboard() {
         </View>
       </ScrollView>
 
-      {/* ─── FAB ─── */}
-      <Pressable
-        style={styles.fab}
-        onPress={() => router.push('/(app)/add-expense')}
-      >
-        <Text style={styles.fabText}>+ Ajouter</Text>
-      </Pressable>
+      {/* ─── FAB Row : Micro + Ajouter ─── */}
+      <View style={styles.fabRow}>
+        <Pressable
+          style={styles.fabMic}
+          onPress={() => router.push('/(app)/voice-input')}
+        >
+          <Text style={styles.fabMicText}>🎤</Text>
+        </Pressable>
+        <Pressable
+          style={styles.fabMain}
+          onPress={() => router.push('/(app)/add-expense')}
+        >
+          <Text style={styles.fabText}>+ Ajouter</Text>
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }
@@ -246,9 +280,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.lg,
+    gap: spacing.sm,
   },
   hello: { ...typography.h3, color: colors.text },
   email: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  headerActions: { flexDirection: 'row', gap: spacing.sm },
   iconBtn: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: colors.surface,
@@ -305,21 +341,26 @@ const styles = StyleSheet.create({
   // Quick actions
   quickActions: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
     marginBottom: spacing.lg,
   },
   quickBtn: {
     flex: 1,
     backgroundColor: colors.surface,
     borderRadius: radius.md,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border,
-    gap: spacing.xs,
+    gap: 2,
   },
-  quickIcon: { fontSize: 22 },
-  quickLabel: { ...typography.caption, color: colors.text, fontWeight: '600' },
+  quickIcon: { fontSize: 18 },
+  quickLabel: {
+    ...typography.caption,
+    color: colors.text,
+    fontWeight: '600',
+    fontSize: 10,
+  },
 
   // Section
   section: { marginBottom: spacing.lg },
@@ -361,16 +402,34 @@ const styles = StyleSheet.create({
   rowLabel: { ...typography.body, color: colors.text },
   rowAmount: { ...typography.bodyBold, color: colors.text },
 
-  // FAB
-  fab: {
+  // FAB Row
+  fabRow: {
     position: 'absolute',
     bottom: spacing.lg,
     left: spacing.lg,
     right: spacing.lg,
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  fabMic: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.primary,
+    boxShadow: '0 4px 12px rgba(74,222,128,0.3)',
+  },
+  fabMicText: { fontSize: 24 },
+  fabMain: {
+    flex: 1,
     backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     borderRadius: radius.pill,
     alignItems: 'center',
+    justifyContent: 'center',
     boxShadow: '0 4px 12px rgba(74,222,128,0.4)',
   },
   fabText: { ...typography.button, color: colors.background },
