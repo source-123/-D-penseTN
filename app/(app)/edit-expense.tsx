@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView,
   KeyboardAvoidingView, Platform, ScrollView, Pressable,
-  ActivityIndicator, Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
@@ -14,17 +14,20 @@ import {
   getTransaction, updateTransaction, deleteTransaction,
 } from '@/services/firestore.service';
 import { useAuthStore } from '@/store/auth.store';
+import { useT } from '@/store/language.store';
 import {
   transactionSchema,
   type TransactionFormInput,
   type TransactionInput,
 } from '@/utils/validators';
+import { confirm, info } from '@/utils/confirm';
 import { colors, radius, spacing, typography } from '@/theme';
 
 export default function EditExpense() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const user = useAuthStore((s) => s.user);
+  const { t, isRTL } = useT();
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
@@ -32,8 +35,7 @@ export default function EditExpense() {
   const [type, setType] = useState<'expense' | 'income'>('expense');
 
   const {
-    control, handleSubmit, reset,
-    formState: { errors },
+    control, handleSubmit, reset, formState: { errors },
   } = useForm<TransactionFormInput, any, TransactionInput>({
     resolver: zodResolver(transactionSchema),
     defaultValues: { amount: '', categoryId: 'restaurant', note: '', type: 'expense' },
@@ -45,7 +47,7 @@ export default function EditExpense() {
       try {
         const tx = await getTransaction(user.uid, id);
         if (!tx) {
-          Alert.alert('Introuvable', 'Cette transaction n\'existe plus.');
+          info(t('common.error'), t('tx.empty'));
           router.replace('/(app)/transactions');
           return;
         }
@@ -57,7 +59,7 @@ export default function EditExpense() {
           type: tx.type,
         });
       } catch (e: any) {
-        setGlobalError(e?.message ?? 'Erreur de chargement');
+        setGlobalError(e?.message ?? t('common.error'));
       } finally {
         setFetching(false);
       }
@@ -77,29 +79,26 @@ export default function EditExpense() {
       });
       router.replace('/(app)/transactions');
     } catch (e: any) {
-      setGlobalError(e?.message ?? 'Modification échouée');
+      setGlobalError(e?.message ?? t('common.error'));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!user || !id) return;
-    Alert.alert('Supprimer ?', 'Cette action est définitive.', [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Supprimer',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteTransaction(user.uid, id);
-            router.replace('/(app)/transactions');
-          } catch (e: any) {
-            Alert.alert('Erreur', e?.message ?? 'Suppression échouée');
-          }
-        },
-      },
-    ]);
+    const ok = await confirm({
+      title: t('tx.deleteConfirm'),
+      confirmLabel: t('common.delete'),
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await deleteTransaction(user.uid, id);
+      router.replace('/(app)/transactions');
+    } catch (e: any) {
+      info(t('common.error'), e?.message ?? t('common.error'));
+    }
   };
 
   if (fetching) {
@@ -120,10 +119,10 @@ export default function EditExpense() {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <Pressable onPress={() => router.back()} style={styles.backBtn}>
-              <Text style={styles.backText}>← Retour</Text>
+              <Text style={styles.backText}>{isRTL ? '→' : '←'} {t('common.back')}</Text>
             </Pressable>
-            <Text style={styles.title}>Modifier</Text>
-            <Text style={styles.subtitle}>Transaction existante</Text>
+            <Text style={[styles.title, isRTL && styles.textRight]}>{t('add.editTitle')}</Text>
+            <Text style={[styles.subtitle, isRTL && styles.textRight]}>{t('add.editSubtitle')}</Text>
           </View>
 
           <View style={styles.toggle}>
@@ -132,7 +131,7 @@ export default function EditExpense() {
               style={[styles.toggleBtn, type === 'expense' && styles.toggleActive]}
             >
               <Text style={[styles.toggleText, type === 'expense' && styles.toggleTextActive]}>
-                💸 Dépense
+                {t('add.expense')}
               </Text>
             </Pressable>
             <Pressable
@@ -140,7 +139,7 @@ export default function EditExpense() {
               style={[styles.toggleBtn, type === 'income' && styles.toggleActiveIncome]}
             >
               <Text style={[styles.toggleText, type === 'income' && styles.toggleTextActive]}>
-                💰 Revenu
+                {t('add.income')}
               </Text>
             </Pressable>
           </View>
@@ -150,12 +149,11 @@ export default function EditExpense() {
             name="amount"
             render={({ field: { onChange, value, onBlur } }) => (
               <Input
-                label="Montant"
+                label={t('add.amount')}
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}
                 keyboardType="decimal-pad"
-                placeholder="0.000"
                 error={errors.amount?.message}
               />
             )}
@@ -165,7 +163,7 @@ export default function EditExpense() {
             control={control}
             name="categoryId"
             render={({ field: { onChange, value } }) => (
-              <CategoryPicker value={value} onChange={onChange} error={errors.categoryId?.message} />
+              <CategoryPicker value={value} onChange={onChange} />
             )}
           />
 
@@ -174,11 +172,11 @@ export default function EditExpense() {
             name="note"
             render={({ field: { onChange, value, onBlur } }) => (
               <Input
-                label="Note (optionnel)"
+                label={t('add.note')}
                 value={value ?? ''}
                 onChangeText={onChange}
                 onBlur={onBlur}
-                placeholder={isIncome ? 'Salaire' : 'Déjeuner'}
+                placeholder={isIncome ? t('add.noteIncome') : t('add.noteExpense')}
               />
             )}
           />
@@ -190,14 +188,14 @@ export default function EditExpense() {
           ) : null}
 
           <Button
-            label={isIncome ? 'Enregistrer le revenu' : 'Enregistrer la dépense'}
+            label={isIncome ? t('add.submitEditIncome') : t('add.submitEditExpense')}
             onPress={handleSubmit(onSubmit)}
             loading={loading}
             style={{ marginTop: spacing.md }}
           />
 
           <Pressable onPress={handleDelete} style={styles.deleteBtn}>
-            <Text style={styles.deleteText}>Supprimer</Text>
+            <Text style={styles.deleteText}>{t('common.delete')}</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -214,6 +212,7 @@ const styles = StyleSheet.create({
   backText: { ...typography.body, color: colors.textMuted },
   title: { ...typography.h2, color: colors.text },
   subtitle: { ...typography.body, color: colors.textMuted, marginTop: spacing.xs },
+  textRight: { textAlign: 'right' },
   toggle: {
     flexDirection: 'row', backgroundColor: colors.surface,
     borderRadius: radius.md, padding: 4, marginBottom: spacing.lg,
@@ -225,10 +224,10 @@ const styles = StyleSheet.create({
   toggleText: { ...typography.bodyBold, color: colors.textMuted },
   toggleTextActive: { color: colors.background },
   errorBox: {
-    backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 1, borderColor: colors.danger,
+    backgroundColor: colors.dangerGlow, borderWidth: 1, borderColor: colors.danger,
     borderRadius: 8, padding: spacing.md, marginTop: spacing.md,
   },
-  errorText: { ...typography.body, color: colors.danger },
+  errorText: { ...typography.body, color: colors.dangerLight },
   deleteBtn: { alignItems: 'center', padding: spacing.lg, marginTop: spacing.sm },
   deleteText: { ...typography.bodyBold, color: colors.danger },
 });

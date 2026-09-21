@@ -25,16 +25,10 @@ export function TransactionItem({ transaction, onPress, onLongPress }: Props) {
       <View style={[styles.iconBox, isIncome && styles.iconBoxIncome]}>
         <Text style={styles.icon}>{cat.icon}</Text>
       </View>
-
       <View style={styles.middle}>
-        <Text style={styles.name} numberOfLines={1}>
-          {transaction.note || cat.name}
-        </Text>
-        <Text style={styles.meta}>
-          {cat.name} · {formatDate(transaction.date)}
-        </Text>
+        <Text style={styles.name} numberOfLines={1}>{transaction.note || cat.name}</Text>
+        <Text style={styles.meta}>{cat.name} · {formatDate(transaction.date)}</Text>
       </View>
-
       <Text style={[styles.amount, { color: isIncome ? colors.primary : colors.text }]}>
         {isIncome ? '+' : '-'} {formatCurrency(transaction.amount, { withSymbol: false })}
       </Text>
@@ -44,22 +38,15 @@ export function TransactionItem({ transaction, onPress, onLongPress }: Props) {
 
 const styles = StyleSheet.create({
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: spacing.md,
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: spacing.md, borderBottomWidth: 1,
+    borderBottomColor: colors.border, gap: spacing.md,
   },
   iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 44, height: 44, borderRadius: radius.md,
+    backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center',
   },
-  iconBoxIncome: { backgroundColor: 'rgba(74,222,128,0.15)' },
+  iconBoxIncome: { backgroundColor: colors.primaryGlow },
   icon: { fontSize: 22 },
   middle: { flex: 1 },
   name: { ...typography.bodyBold, color: colors.text },

@@ -11,6 +11,7 @@ import { Input } from '@/components/Input';
 import { CategoryPicker } from '@/features/transactions/CategoryPicker';
 import { createTransaction } from '@/services/firestore.service';
 import { useAuthStore } from '@/store/auth.store';
+import { useT } from '@/store/language.store';
 import {
   transactionSchema,
   type TransactionFormInput,
@@ -21,14 +22,13 @@ import { colors, radius, spacing, typography } from '@/theme';
 export default function AddExpense() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const { t, isRTL } = useT();
   const [loading, setLoading] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [type, setType] = useState<'expense' | 'income'>('expense');
 
   const {
-    control,
-    handleSubmit,
-    formState: { errors },
+    control, handleSubmit, formState: { errors },
   } = useForm<TransactionFormInput, any, TransactionInput>({
     resolver: zodResolver(transactionSchema),
     defaultValues: { amount: '', categoryId: 'restaurant', note: '', type: 'expense' },
@@ -49,7 +49,7 @@ export default function AddExpense() {
       router.replace('/(app)/dashboard');
     } catch (err: any) {
       console.error('[add-expense]', err);
-      setGlobalError(err?.message ?? "Erreur lors de l'enregistrement");
+      setGlobalError(err?.message ?? t('common.error'));
     } finally {
       setLoading(false);
     }
@@ -63,20 +63,19 @@ export default function AddExpense() {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <Pressable onPress={() => router.back()} style={styles.backBtn}>
-              <Text style={styles.backText}>← Retour</Text>
+              <Text style={styles.backText}>{isRTL ? '→' : '←'} {t('common.back')}</Text>
             </Pressable>
-            <Text style={styles.title}>Ajouter</Text>
-            <Text style={styles.subtitle}>Une nouvelle transaction</Text>
+            <Text style={[styles.title, isRTL && styles.textRight]}>{t('add.title')}</Text>
+            <Text style={[styles.subtitle, isRTL && styles.textRight]}>{t('add.subtitle')}</Text>
           </View>
 
-          {/* Toggle Dépense / Revenu */}
           <View style={styles.toggle}>
             <Pressable
               onPress={() => setType('expense')}
               style={[styles.toggleBtn, type === 'expense' && styles.toggleActive]}
             >
               <Text style={[styles.toggleText, type === 'expense' && styles.toggleTextActive]}>
-                💸 Dépense
+                {t('add.expense')}
               </Text>
             </Pressable>
             <Pressable
@@ -84,7 +83,7 @@ export default function AddExpense() {
               style={[styles.toggleBtn, type === 'income' && styles.toggleActiveIncome]}
             >
               <Text style={[styles.toggleText, type === 'income' && styles.toggleTextActive]}>
-                💰 Revenu
+                {t('add.income')}
               </Text>
             </Pressable>
           </View>
@@ -94,12 +93,12 @@ export default function AddExpense() {
             name="amount"
             render={({ field: { onChange, value, onBlur } }) => (
               <Input
-                label="Montant"
+                label={t('add.amount')}
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}
                 keyboardType="decimal-pad"
-                placeholder="0.000"
+                placeholder={t('add.amountPh')}
                 error={errors.amount?.message}
               />
             )}
@@ -109,11 +108,7 @@ export default function AddExpense() {
             control={control}
             name="categoryId"
             render={({ field: { onChange, value } }) => (
-              <CategoryPicker
-                value={value}
-                onChange={onChange}
-                error={errors.categoryId?.message}
-              />
+              <CategoryPicker value={value} onChange={onChange} error={errors.categoryId?.message} />
             )}
           />
 
@@ -122,11 +117,11 @@ export default function AddExpense() {
             name="note"
             render={({ field: { onChange, value, onBlur } }) => (
               <Input
-                label="Note (optionnel)"
+                label={t('add.note')}
                 value={value ?? ''}
                 onChangeText={onChange}
                 onBlur={onBlur}
-                placeholder={isIncome ? 'Salaire' : 'Déjeuner'}
+                placeholder={isIncome ? t('add.noteIncome') : t('add.noteExpense')}
               />
             )}
           />
@@ -138,7 +133,7 @@ export default function AddExpense() {
           ) : null}
 
           <Button
-            label={isIncome ? 'Ajouter le revenu' : 'Ajouter la dépense'}
+            label={isIncome ? t('add.submitIncome') : t('add.submitExpense')}
             onPress={handleSubmit(onSubmit)}
             loading={loading}
             style={{ marginTop: spacing.md }}
@@ -157,32 +152,20 @@ const styles = StyleSheet.create({
   backText: { ...typography.body, color: colors.textMuted },
   title: { ...typography.h2, color: colors.text },
   subtitle: { ...typography.body, color: colors.textMuted, marginTop: spacing.xs },
+  textRight: { textAlign: 'right' },
   toggle: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: 4,
-    marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    flexDirection: 'row', backgroundColor: colors.surface,
+    borderRadius: radius.md, padding: 4, marginBottom: spacing.lg,
+    borderWidth: 1, borderColor: colors.border,
   },
-  toggleBtn: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-  },
+  toggleBtn: { flex: 1, paddingVertical: spacing.sm, borderRadius: radius.sm, alignItems: 'center' },
   toggleActive: { backgroundColor: colors.danger },
   toggleActiveIncome: { backgroundColor: colors.primary },
   toggleText: { ...typography.bodyBold, color: colors.textMuted },
   toggleTextActive: { color: colors.background },
   errorBox: {
-    backgroundColor: 'rgba(239,68,68,0.1)',
-    borderWidth: 1,
-    borderColor: colors.danger,
-    borderRadius: 8,
-    padding: spacing.md,
-    marginTop: spacing.md,
+    backgroundColor: colors.dangerGlow, borderWidth: 1, borderColor: colors.danger,
+    borderRadius: 8, padding: spacing.md, marginTop: spacing.md,
   },
-  errorText: { ...typography.body, color: colors.danger },
+  errorText: { ...typography.body, color: colors.dangerLight },
 });

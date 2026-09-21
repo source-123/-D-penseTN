@@ -1,18 +1,21 @@
 import { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, FlatList,
-  ActivityIndicator, Alert, RefreshControl, Pressable,
+  ActivityIndicator, RefreshControl, Pressable,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store/auth.store';
+import { useT } from '@/store/language.store';
 import { getTransactions, deleteTransaction } from '@/services/firestore.service';
 import { TransactionItem } from '@/features/transactions/TransactionItem';
+import { confirm, info } from '@/utils/confirm';
 import { colors, spacing, typography } from '@/theme';
 import type { Transaction } from '@/types';
 
 export default function Transactions() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const { t, isRTL } = useT();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -36,27 +39,20 @@ export default function Transactions() {
     router.push({ pathname: '/(app)/edit-expense', params: { id: tx.id } });
   };
 
-  const confirmDelete = (tx: Transaction) => {
-    Alert.alert(
-      'Supprimer cette transaction ?',
-      `${tx.note || tx.categoryId} · ${tx.amount} DT`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            if (!user) return;
-            try {
-              await deleteTransaction(user.uid, tx.id);
-              setTransactions((prev) => prev.filter((t) => t.id !== tx.id));
-            } catch (e: any) {
-              Alert.alert('Erreur', e?.message ?? 'Suppression échouée');
-            }
-          },
-        },
-      ]
-    );
+  const confirmDelete = async (tx: Transaction) => {
+    const ok = await confirm({
+      title: t('tx.deleteConfirm'),
+      message: `${tx.note || tx.categoryId} · ${tx.amount} DT`,
+      confirmLabel: t('common.delete'),
+      destructive: true,
+    });
+    if (!ok || !user) return;
+    try {
+      await deleteTransaction(user.uid, tx.id);
+      setTransactions((prev) => prev.filter((t) => t.id !== tx.id));
+    } catch (e: any) {
+      info(t('common.error'), e?.message ?? t('common.error'));
+    }
   };
 
   if (loading) {
@@ -69,22 +65,24 @@ export default function Transactions() {
     );
   }
 
+  const countLabel = transactions.length === 1
+    ? t('tx.count_one', { count: transactions.length })
+    : t('tx.count_other', { count: transactions.length });
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>← Retour</Text>
+          <Text style={styles.backText}>{isRTL ? '→' : '←'} {t('common.back')}</Text>
         </Pressable>
-        <Text style={styles.title}>Transactions</Text>
-        <Text style={styles.subtitle}>
-          {transactions.length} opération{transactions.length > 1 ? 's' : ''}
-        </Text>
+        <Text style={[styles.title, isRTL && styles.textRight]}>{t('tx.title')}</Text>
+        <Text style={[styles.subtitle, isRTL && styles.textRight]}>{countLabel}</Text>
       </View>
 
       {transactions.length === 0 ? (
         <View style={styles.center}>
-          <Text style={styles.empty}>Aucune transaction.</Text>
-          <Text style={styles.emptySub}>Appuie sur "+ Ajouter" pour commencer.</Text>
+          <Text style={styles.empty}>{t('tx.empty')}</Text>
+          <Text style={styles.emptySub}>{t('tx.emptySub')}</Text>
         </View>
       ) : (
         <FlatList
@@ -106,9 +104,7 @@ export default function Transactions() {
             />
           }
           ListFooterComponent={
-            <Text style={styles.hint}>
-              Tap = modifier · Maintien = supprimer
-            </Text>
+            <Text style={styles.hint}>{t('tx.hint')}</Text>
           }
         />
       )}
@@ -124,14 +120,12 @@ const styles = StyleSheet.create({
   backText: { ...typography.body, color: colors.textMuted },
   title: { ...typography.h2, color: colors.text },
   subtitle: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  textRight: { textAlign: 'right' },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
   empty: { ...typography.body, color: colors.textMuted },
   emptySub: { ...typography.caption, color: colors.textMuted, marginTop: spacing.xs },
   hint: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.lg,
-    fontStyle: 'italic',
+    ...typography.caption, color: colors.textMuted,
+    textAlign: 'center', marginTop: spacing.lg, fontStyle: 'italic',
   },
 });

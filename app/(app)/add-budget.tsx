@@ -12,29 +12,24 @@ import { Input } from '@/components/Input';
 import { CategoryPicker } from '@/features/transactions/CategoryPicker';
 import { createBudget, currentMonthKey } from '@/services/budget.service';
 import { useAuthStore } from '@/store/auth.store';
+import { useT } from '@/store/language.store';
+import { info } from '@/utils/confirm';
 import { colors, spacing, typography } from '@/theme';
 
 const schema = z.object({
-  amount: z
-    .string()
-    .min(1, 'Montant requis')
-    .transform((v) => parseFloat(v.replace(',', '.')))
-    .refine((n) => !isNaN(n) && n > 0, 'Montant invalide'),
-  categoryId: z.string().min(1, 'Catégorie requise'),
+  amount: z.string().min(1).transform((v) => parseFloat(v.replace(',', '.'))).refine((n) => !isNaN(n) && n > 0),
+  categoryId: z.string().min(1),
 });
-
 type FormInput = z.input<typeof schema>;
 type FormOutput = z.output<typeof schema>;
 
 export default function AddBudget() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const { t, isRTL } = useT();
   const [loading, setLoading] = useState(false);
-  const [globalError, setGlobalError] = useState<string | null>(null);
 
-  const {
-    control, handleSubmit, formState: { errors },
-  } = useForm<FormInput, any, FormOutput>({
+  const { control, handleSubmit, formState: { errors } } = useForm<FormInput, any, FormOutput>({
     resolver: zodResolver(schema),
     defaultValues: { amount: '', categoryId: 'restaurant' },
   });
@@ -42,7 +37,6 @@ export default function AddBudget() {
   const onSubmit = async (data: FormOutput) => {
     if (!user) return;
     setLoading(true);
-    setGlobalError(null);
     try {
       await createBudget(user.uid, {
         categoryId: data.categoryId,
@@ -51,7 +45,7 @@ export default function AddBudget() {
       });
       router.replace('/(app)/budgets');
     } catch (e: any) {
-      setGlobalError(e?.message ?? 'Erreur');
+      info(t('common.error'), e?.message ?? t('common.error'));
     } finally {
       setLoading(false);
     }
@@ -63,10 +57,10 @@ export default function AddBudget() {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <Pressable onPress={() => router.back()} style={styles.backBtn}>
-              <Text style={styles.backText}>← Retour</Text>
+              <Text style={styles.backText}>{isRTL ? '→' : '←'} {t('common.back')}</Text>
             </Pressable>
-            <Text style={styles.title}>Nouveau budget</Text>
-            <Text style={styles.subtitle}>Limite mensuelle par catégorie</Text>
+            <Text style={[styles.title, isRTL && styles.textRight]}>{t('budgets.addTitle')}</Text>
+            <Text style={[styles.subtitle, isRTL && styles.textRight]}>{t('budgets.addSubtitle')}</Text>
           </View>
 
           <Controller
@@ -74,7 +68,7 @@ export default function AddBudget() {
             name="amount"
             render={({ field: { onChange, value, onBlur } }) => (
               <Input
-                label="Limite mensuelle (DT)"
+                label={t('budgets.limit')}
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}
@@ -89,18 +83,12 @@ export default function AddBudget() {
             control={control}
             name="categoryId"
             render={({ field: { onChange, value } }) => (
-              <CategoryPicker value={value} onChange={onChange} error={errors.categoryId?.message} />
+              <CategoryPicker value={value} onChange={onChange} />
             )}
           />
 
-          {globalError ? (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{globalError}</Text>
-            </View>
-          ) : null}
-
           <Button
-            label="Créer le budget"
+            label={t('budgets.createBtn')}
             onPress={handleSubmit(onSubmit)}
             loading={loading}
             style={{ marginTop: spacing.md }}
@@ -119,9 +107,5 @@ const styles = StyleSheet.create({
   backText: { ...typography.body, color: colors.textMuted },
   title: { ...typography.h2, color: colors.text },
   subtitle: { ...typography.body, color: colors.textMuted, marginTop: spacing.xs },
-  errorBox: {
-    backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 1, borderColor: colors.danger,
-    borderRadius: 8, padding: spacing.md, marginTop: spacing.md,
-  },
-  errorText: { ...typography.body, color: colors.danger },
+  textRight: { textAlign: 'right' },
 });

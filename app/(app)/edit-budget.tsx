@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView,
   KeyboardAvoidingView, Platform, ScrollView, Pressable,
-  ActivityIndicator, Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
@@ -13,17 +13,14 @@ import { Input } from '@/components/Input';
 import { CategoryPicker } from '@/features/transactions/CategoryPicker';
 import { getBudgetsForMonth, updateBudget, deleteBudget } from '@/services/budget.service';
 import { useAuthStore } from '@/store/auth.store';
+import { useT } from '@/store/language.store';
+import { confirm, info } from '@/utils/confirm';
 import { colors, spacing, typography } from '@/theme';
 
 const schema = z.object({
-  amount: z
-    .string()
-    .min(1, 'Montant requis')
-    .transform((v) => parseFloat(v.replace(',', '.')))
-    .refine((n) => !isNaN(n) && n > 0, 'Montant invalide'),
+  amount: z.string().min(1).transform((v) => parseFloat(v.replace(',', '.'))).refine((n) => !isNaN(n) && n > 0),
   categoryId: z.string().min(1),
 });
-
 type FormInput = z.input<typeof schema>;
 type FormOutput = z.output<typeof schema>;
 
@@ -31,12 +28,11 @@ export default function EditBudget() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const user = useAuthStore((s) => s.user);
+  const { t, isRTL } = useT();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
 
-  const {
-    control, handleSubmit, reset, formState: { errors },
-  } = useForm<FormInput, any, FormOutput>({
+  const { control, handleSubmit, reset, formState: { errors } } = useForm<FormInput, any, FormOutput>({
     resolver: zodResolver(schema),
     defaultValues: { amount: '', categoryId: 'restaurant' },
   });
@@ -48,7 +44,7 @@ export default function EditBudget() {
         const budgets = await getBudgetsForMonth(user.uid);
         const found = budgets.find((b) => b.id === id);
         if (!found) {
-          Alert.alert('Introuvable', 'Ce budget n\'existe plus.');
+          info(t('common.error'), t('budgets.emptyTitle'));
           router.replace('/(app)/budgets');
           return;
         }
@@ -66,25 +62,22 @@ export default function EditBudget() {
       await updateBudget(user.uid, id, data.amount);
       router.replace('/(app)/budgets');
     } catch (e: any) {
-      Alert.alert('Erreur', e?.message ?? 'Modification échouée');
+      info(t('common.error'), e?.message ?? t('common.error'));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!user || !id) return;
-    Alert.alert('Supprimer ce budget ?', '', [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Supprimer',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteBudget(user.uid, id);
-          router.replace('/(app)/budgets');
-        },
-      },
-    ]);
+    const ok = await confirm({
+      title: t('budgets.deleteConfirm'),
+      confirmLabel: t('common.delete'),
+      destructive: true,
+    });
+    if (!ok) return;
+    await deleteBudget(user.uid, id);
+    router.replace('/(app)/budgets');
   };
 
   if (fetching) {
@@ -103,9 +96,9 @@ export default function EditBudget() {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <Pressable onPress={() => router.back()} style={styles.backBtn}>
-              <Text style={styles.backText}>← Retour</Text>
+              <Text style={styles.backText}>{isRTL ? '→' : '←'} {t('common.back')}</Text>
             </Pressable>
-            <Text style={styles.title}>Modifier le budget</Text>
+            <Text style={[styles.title, isRTL && styles.textRight]}>{t('budgets.editTitle')}</Text>
           </View>
 
           <Controller
@@ -113,7 +106,7 @@ export default function EditBudget() {
             name="amount"
             render={({ field: { onChange, value, onBlur } }) => (
               <Input
-                label="Limite mensuelle (DT)"
+                label={t('budgets.limit')}
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}
@@ -132,14 +125,14 @@ export default function EditBudget() {
           />
 
           <Button
-            label="Enregistrer"
+            label={t('common.save')}
             onPress={handleSubmit(onSubmit)}
             loading={loading}
             style={{ marginTop: spacing.md }}
           />
 
           <Pressable onPress={handleDelete} style={styles.deleteBtn}>
-            <Text style={styles.deleteText}>Supprimer ce budget</Text>
+            <Text style={styles.deleteText}>{t('common.delete')}</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -155,6 +148,7 @@ const styles = StyleSheet.create({
   backBtn: { marginBottom: spacing.md },
   backText: { ...typography.body, color: colors.textMuted },
   title: { ...typography.h2, color: colors.text },
+  textRight: { textAlign: 'right' },
   deleteBtn: { alignItems: 'center', padding: spacing.lg, marginTop: spacing.sm },
   deleteText: { ...typography.bodyBold, color: colors.danger },
 });
