@@ -1,14 +1,16 @@
 import { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, Pressable,
-  ScrollView, ActivityIndicator, RefreshControl,
+  ScrollView, ActivityIndicator, RefreshControl, Platform,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/auth.store';
 import { useT } from '@/store/language.store';
 import { useTheme } from '@/store/theme.store';
 import { getTransactions } from '@/services/firestore.service';
 import { getBudgetsForMonth } from '@/services/budget.service';
+import { getGoals } from '@/services/goal.service';
 import { signOutUser } from '@/services/auth.service';
 import { getCategory } from '@/features/transactions/categories';
 import { computePrediction } from '@/features/prediction/utils';
@@ -18,11 +20,14 @@ import { formatCurrency } from '@/utils/formatCurrency';
 import type { Transaction } from '@/types';
 import type { PredictionResult } from '@/types/prediction';
 
+const TAB_BAR_HEIGHT = 62;
+
 export default function Dashboard() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { t, isRTL } = useT();
   const { colors: tc } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
@@ -35,12 +40,14 @@ export default function Dashboard() {
       const tx = await getTransactions(user.uid);
       setTransactions(tx);
 
-      // Prédiction
       try {
-        const budgets = await getBudgetsForMonth(user.uid);
+        const [budgets] = await Promise.all([
+          getBudgetsForMonth(user.uid),
+          getGoals(user.uid),
+        ]);
         setPrediction(computePrediction(tx, budgets));
       } catch (e) {
-        console.warn('[dashboard] prediction failed', e);
+        console.warn('[dashboard] extras failed', e);
       }
     } catch (e) {
       console.error('[dashboard]', e);
@@ -56,7 +63,7 @@ export default function Dashboard() {
     const ok = await confirm({
       title: t('common.confirm'),
       message: t('dash.logoutConfirm'),
-      confirmLabel: t('common.confirm'),
+      confirmLabel: t('settings.logoutBtn'),
       destructive: true,
     });
     if (ok) await signOutUser();
@@ -82,7 +89,8 @@ export default function Dashboard() {
     });
   const categoryTotals = Array.from(categoryMap.entries())
     .map(([categoryId, total]) => ({ categoryId, total }))
-    .sort((a, b) => b.total - a.total);
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 4);
 
   if (loading) {
     return (
@@ -97,42 +105,67 @@ export default function Dashboard() {
   const isBalancePositive = balance >= 0;
   const monthLabel = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(now);
 
+  // Safe zone : FAB au-dessus de la tab bar + nav Android
+  const bottomInset = Math.max(insets.bottom, Platform.OS === 'android' ? 8 : 0);
+  const fabBottom = TAB_BAR_HEIGHT + bottomInset + spacing.md;
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: tc.background }]}>
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: fabBottom + 80 }]}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} tintColor={tc.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => { setRefreshing(true); loadData(); }}
+            tintColor={tc.primary}
+          />
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* ═══════════ HEADER ═══════════ */}
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.greeting, { color: tc.text }]}>{t('dash.greeting')}</Text>
-            <Text style={[styles.email, { color: tc.textMuted }]} numberOfLines={1}>{user?.email}</Text>
+            <Text style={[styles.email, { color: tc.textMuted }]} numberOfLines={1}>
+              {user?.email}
+            </Text>
           </View>
+
           <View style={styles.headerActions}>
             <Pressable
-              onPress={() => router.push('/(app)/settings')}
-              style={[styles.iconBtn, { backgroundColor: tc.surface, borderColor: tc.border }]}
+              onPress={() => router.push('/(app)/voice-input')}
+              style={({ pressed }) => [
+                styles.iconBtn,
+                { backgroundColor: tc.surface, borderColor: tc.border },
+                pressed && { opacity: 0.7 },
+              ]}
             >
-              <Text style={styles.iconEmoji}>🔔</Text>
+              <Text style={styles.iconEmoji}>🎤</Text>
             </Pressable>
             <Pressable
               onPress={handleLogout}
-              style={[styles.iconBtn, { backgroundColor: tc.surface, borderColor: tc.border }]}
+              style={({ pressed }) => [
+                styles.iconBtn,
+                { backgroundColor: tc.surface, borderColor: tc.border },
+                pressed && { opacity: 0.7 },
+              ]}
             >
               <Text style={styles.iconEmoji}>↪</Text>
             </Pressable>
           </View>
         </View>
 
-        {/* Balance Card */}
+        {/* ═══════════ HERO — BALANCE ═══════════ */}
         <View style={[styles.balanceCard, { backgroundColor: tc.surface, borderColor: tc.border }, shadows.card]}>
           <View style={[styles.balanceGlow, { backgroundColor: tc.primaryGlow }]} />
-          <Text style={[styles.balanceLabel, { color: tc.textMuted }]}>{t('dash.balanceTotal')}</Text>
-          <Text style={[styles.balanceValue, { color: isBalancePositive ? tc.primary : tc.danger }]} numberOfLines={1} adjustsFontSizeToFit>
+          <Text style={[styles.balanceLabel, { color: tc.textMuted }]}>
+            {t('dash.balanceTotal')}
+          </Text>
+          <Text
+            style={[styles.balanceValue, { color: isBalancePositive ? tc.primary : tc.danger }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
             {formatCurrency(balance)}
           </Text>
           <Text style={[styles.balanceMonth, { color: tc.textFaint }]}>{monthLabel}</Text>
@@ -143,7 +176,9 @@ export default function Dashboard() {
                 <Text style={styles.statIconText}>↓</Text>
               </View>
               <Text style={[styles.statLabel, { color: tc.textMuted }]}>{t('dash.income')}</Text>
-              <Text style={[styles.statValue, { color: tc.primary }]}>+{formatCurrency(monthIncome, { withSymbol: false })}</Text>
+              <Text style={[styles.statValue, { color: tc.primary }]}>
+                +{formatCurrency(monthIncome, { withSymbol: false })}
+              </Text>
             </View>
             <View style={[styles.statDivider, { backgroundColor: tc.border }]} />
             <View style={styles.statCol}>
@@ -151,69 +186,115 @@ export default function Dashboard() {
                 <Text style={styles.statIconText}>↑</Text>
               </View>
               <Text style={[styles.statLabel, { color: tc.textMuted }]}>{t('dash.expenses')}</Text>
-              <Text style={[styles.statValue, { color: tc.danger }]}>-{formatCurrency(monthExpenses, { withSymbol: false })}</Text>
+              <Text style={[styles.statValue, { color: tc.danger }]}>
+                -{formatCurrency(monthExpenses, { withSymbol: false })}
+              </Text>
             </View>
           </View>
-
-          {monthIncome > 0 && (
-            <View style={styles.savingsBlock}>
-              <View style={styles.savingsHeader}>
-                <Text style={[styles.savingsLabel, { color: tc.textSecondary }]}>{t('dash.savingsMonth')}</Text>
-                <Text style={[styles.savingsPercent, { color: savingsRate >= 20 ? tc.primary : tc.warning }]}>
-                  {savingsRate.toFixed(0)}%
-                </Text>
-              </View>
-              <View style={[styles.savingsBar, { backgroundColor: tc.surfaceAlt }]}>
-                <View style={[styles.savingsFill, {
-                  width: `${Math.min(Math.max(savingsRate, 0), 100)}%`,
-                  backgroundColor: savingsRate >= 20 ? tc.primary : tc.warning,
-                }]} />
-              </View>
-            </View>
-          )}
         </View>
 
-        {/* ─── Prédiction widget ─── */}
-        {prediction && prediction.currentIncome > 0 && (
-          <Pressable
-            onPress={() => router.push('/(app)/prediction')}
-            style={[styles.predictionCard, { backgroundColor: tc.surface, borderColor: tc.border }]}
-          >
-            <View style={styles.predictionLeft}>
-              <Text style={styles.predictionEmoji}>🔮</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.predictionLabel, { color: tc.textMuted }]}>
-                  {t('prediction.title')}
-                </Text>
-                <Text style={[
-                  styles.predictionValue,
-                  { color: prediction.projectedBalance >= 0 ? tc.primary : tc.danger },
-                ]}>
-                  {prediction.projectedBalance >= 0 ? '+' : ''}{formatCurrency(prediction.projectedBalance)}
-                </Text>
-                <Text style={[styles.predictionMeta, { color: tc.textMuted }]}>
-                  {prediction.daysRemaining} {t('prediction.daysLeft')} · {t('prediction.confidence')} {prediction.confidence === 'high' ? '🟢' : prediction.confidence === 'medium' ? '🟡' : '🔴'}
-                </Text>
-              </View>
+        {/* ═══════════ INSIGHTS ═══════════ */}
+        {((prediction && prediction.currentIncome > 0) || monthIncome > 0) && (
+          <>
+            <Text style={[styles.sectionTitle, { color: tc.text }]}>
+              💡 {t('dash.insights')}
+            </Text>
+
+            <View style={styles.insightsRow}>
+              {prediction && prediction.currentIncome > 0 && (
+                <Pressable
+                  onPress={() => router.push('/(app)/prediction')}
+                  style={({ pressed }) => [
+                    styles.insightCard,
+                    { backgroundColor: tc.surface, borderColor: tc.border },
+                    pressed && { opacity: 0.8 },
+                  ]}
+                >
+                  <Text style={styles.insightEmoji}>🔮</Text>
+                  <Text style={[styles.insightLabel, { color: tc.textMuted }]}>
+                    {t('prediction.projectedBalanceShort')}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.insightValue,
+                      { color: prediction.projectedBalance >= 0 ? tc.primary : tc.danger },
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {prediction.projectedBalance >= 0 ? '+' : ''}
+                    {formatCurrency(prediction.projectedBalance, { withSymbol: false })}
+                  </Text>
+                  <Text style={[styles.insightMeta, { color: tc.textMuted }]}>
+                    {prediction.daysRemaining}j ·{' '}
+                    {prediction.confidence === 'high' ? '🟢' : prediction.confidence === 'medium' ? '🟡' : '🔴'}
+                  </Text>
+                </Pressable>
+              )}
+
+              {monthIncome > 0 && (
+                <View style={[styles.insightCard, { backgroundColor: tc.surface, borderColor: tc.border }]}>
+                  <Text style={styles.insightEmoji}>💰</Text>
+                  <Text style={[styles.insightLabel, { color: tc.textMuted }]}>
+                    {t('dash.savingsMonth')}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.insightValue,
+                      { color: savingsRate >= 20 ? tc.primary : tc.warning },
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {savingsRate.toFixed(0)}%
+                  </Text>
+                  <View style={[styles.insightBar, { backgroundColor: tc.surfaceAlt }]}>
+                    <View
+                      style={[
+                        styles.insightBarFill,
+                        {
+                          width: `${Math.min(Math.max(savingsRate, 0), 100)}%`,
+                          backgroundColor: savingsRate >= 20 ? tc.primary : tc.warning,
+                        },
+                      ]}
+                    />
+                  </View>
+                </View>
+              )}
             </View>
-            <Text style={[styles.predictionArrow, { color: tc.primary }]}>→</Text>
-          </Pressable>
+          </>
         )}
 
-        {/* Quick actions — 6 boutons */}
-        <Text style={[styles.sectionTitle, { color: tc.text }]}>{t('dash.shortcuts')}</Text>
+        {/* ═══════════ ACCÈS RAPIDE ═══════════ */}
+        <Text style={[styles.sectionTitle, { color: tc.text }]}>
+          ⚡ {t('dash.quickAccess')}
+        </Text>
         <View style={styles.quickGrid}>
-          <QuickAction icon="📋" label={t('dash.tx')} onPress={() => router.push('/(app)/transactions')} tc={tc} />
-          <QuickAction icon="🎯" label={t('dash.budgets')} onPress={() => router.push('/(app)/budgets')} tc={tc} />
-          <QuickAction icon="💰" label={t('goals.title')} onPress={() => router.push('/(app)/goals')} tc={tc} />
-          <QuickAction icon="🔁" label={t('recurring.title')} onPress={() => router.push('/(app)/recurring')} tc={tc} />
-          <QuickAction icon="📈" label={t('dash.analysis')} onPress={() => router.push('/(app)/analysis')} tc={tc} />
-          <QuickAction icon="📊" label={t('dash.stats')} onPress={() => router.push('/(app)/statistics')} tc={tc} />
+          <QuickAction
+            icon="📈"
+            label={t('dash.analysis')}
+            onPress={() => router.push('/(app)/analysis')}
+            tc={tc}
+          />
+          <QuickAction
+            icon="📊"
+            label={t('dash.stats')}
+            onPress={() => router.push('/(app)/statistics')}
+            tc={tc}
+          />
+          <QuickAction
+            icon="🔁"
+            label={t('recurring.title')}
+            onPress={() => router.push('/(app)/recurring')}
+            tc={tc}
+          />
         </View>
 
-        {/* Dépenses du mois */}
+        {/* ═══════════ ACTIVITÉ RÉCENTE ═══════════ */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: tc.text }]}>{t('dash.monthExpenses')}</Text>
+          <Text style={[styles.sectionTitle, { color: tc.text }]}>
+            📊 {t('dash.recentActivity')}
+          </Text>
           {categoryTotals.length > 0 && (
             <Pressable onPress={() => router.push('/(app)/transactions')}>
               <Text style={[styles.seeAll, { color: tc.primary }]}>{t('dash.seeAll')}</Text>
@@ -232,52 +313,78 @@ export default function Dashboard() {
             {categoryTotals.map(({ categoryId, total }, index) => {
               const cat = getCategory(categoryId);
               const isLast = index === categoryTotals.length - 1;
+              const percent = monthExpenses > 0 ? (total / monthExpenses) * 100 : 0;
               return (
-                <View key={categoryId} style={[styles.listRow, { borderBottomColor: tc.border }, isLast && { borderBottomWidth: 0 }]}>
-                  <View style={styles.listLeft}>
-                    <View style={[styles.listIcon, { backgroundColor: tc.surfaceAlt }]}>
-                      <Text style={styles.listIconText}>{cat.icon}</Text>
-                    </View>
-                    <Text style={[styles.listLabel, { color: tc.text }]}>{cat.name}</Text>
+                <View
+                  key={categoryId}
+                  style={[
+                    styles.listRow,
+                    { borderBottomColor: tc.border },
+                    isLast && { borderBottomWidth: 0 },
+                  ]}
+                >
+                  <View style={[styles.listIcon, { backgroundColor: tc.surfaceAlt }]}>
+                    <Text style={styles.listIconText}>{cat.icon}</Text>
                   </View>
-                  <Text style={[styles.listAmount, { color: tc.text }]}>{formatCurrency(total)}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.listLabel, { color: tc.text }]}>{cat.name}</Text>
+                    <View style={[styles.listMiniBar, { backgroundColor: tc.surfaceAlt }]}>
+                      <View
+                        style={[
+                          styles.listMiniFill,
+                          { width: `${Math.min(percent, 100)}%`, backgroundColor: tc.primary },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                  <Text style={[styles.listAmount, { color: tc.text }]}>
+                    {formatCurrency(total, { withSymbol: false })}
+                  </Text>
                 </View>
               );
             })}
           </View>
         )}
-
-        <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* FAB Row */}
-      <View style={styles.fabRow}>
-        <Pressable
-          style={({ pressed }) => [styles.fabMic, { backgroundColor: tc.surface, borderColor: tc.primary }, pressed && { opacity: 0.85 }]}
-          onPress={() => router.push('/(app)/voice-input')}
-        >
-          <Text style={styles.fabMicText}>🎤</Text>
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [styles.fabMain, { backgroundColor: tc.primary }, shadows.fab, pressed && { opacity: 0.9 }]}
-          onPress={() => router.push('/(app)/add-expense')}
-        >
-          <Text style={[styles.fabPlus, { color: tc.background }]}>+</Text>
-          <Text style={[styles.fabText, { color: tc.background }]}>{t('common.add')}</Text>
-        </Pressable>
-      </View>
+      {/* ═══════════ FAB (Safe Zone) ═══════════ */}
+      <Pressable
+        style={({ pressed }) => [
+          styles.fab,
+          {
+            backgroundColor: tc.primary,
+            bottom: fabBottom,
+          },
+          shadows.fab,
+          pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] },
+        ]}
+        onPress={() => router.push('/(app)/add-expense')}
+      >
+        <Text style={[styles.fabPlus, { color: tc.background }]}>+</Text>
+        <Text style={[styles.fabText, { color: tc.background }]}>{t('common.add')}</Text>
+      </Pressable>
     </SafeAreaView>
   );
 }
 
-function QuickAction({ icon, label, onPress, tc }: { icon: string; label: string; onPress: () => void; tc: any }) {
+function QuickAction({
+  icon, label, onPress, tc,
+}: {
+  icon: string; label: string; onPress: () => void; tc: any;
+}) {
   return (
     <Pressable
-      style={({ pressed }) => [styles.quickBtn, { backgroundColor: tc.surface, borderColor: tc.border }, pressed && { opacity: 0.8 }]}
+      style={({ pressed }) => [
+        styles.quickBtn,
+        { backgroundColor: tc.surface, borderColor: tc.border },
+        pressed && { opacity: 0.8 },
+      ]}
       onPress={onPress}
     >
       <Text style={styles.quickIcon}>{icon}</Text>
-      <Text style={[styles.quickLabel, { color: tc.textSecondary }]} numberOfLines={1}>{label}</Text>
+      <Text style={[styles.quickLabel, { color: tc.textSecondary }]} numberOfLines={1}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -286,75 +393,151 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.lg, gap: spacing.sm },
+
+  // Header
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
+  },
   greeting: { ...typography.h3 },
   email: { ...typography.caption, marginTop: 2 },
   headerActions: { flexDirection: 'row', gap: spacing.sm },
-  iconBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  iconBtn: {
+    width: 42, height: 42, borderRadius: 21,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+  },
   iconEmoji: { fontSize: 18 },
-  balanceCard: { borderRadius: radius.xl, padding: spacing.lg, marginBottom: spacing.md, borderWidth: 1, overflow: 'hidden' },
-  balanceGlow: { position: 'absolute', top: -60, right: -60, width: 180, height: 180, borderRadius: 90 },
+
+  // Balance
+  balanceCard: {
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  balanceGlow: {
+    position: 'absolute',
+    top: -60, right: -60,
+    width: 180, height: 180, borderRadius: 90,
+  },
   balanceLabel: { ...typography.label, marginBottom: spacing.sm },
   balanceValue: { ...typography.display, fontSize: 40 },
   balanceMonth: { ...typography.caption, marginTop: 2, textTransform: 'capitalize' },
-  statsRow: { flexDirection: 'row', marginTop: spacing.lg, paddingTop: spacing.lg, borderTopWidth: 1, alignItems: 'center' },
+  statsRow: {
+    flexDirection: 'row',
+    marginTop: spacing.lg,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    alignItems: 'center',
+  },
   statCol: { flex: 1, alignItems: 'center' },
   statDivider: { width: 1, height: 40, marginHorizontal: spacing.md },
-  statIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
+  statIcon: {
+    width: 32, height: 32, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
   statIconText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   statLabel: { ...typography.tiny, marginBottom: 2 },
   statValue: { ...typography.bodyBold, fontSize: 15 },
-  savingsBlock: { marginTop: spacing.lg },
-  savingsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  savingsLabel: { ...typography.caption },
-  savingsPercent: { ...typography.bodyBold, fontSize: 14 },
-  savingsBar: { height: 8, borderRadius: 4, overflow: 'hidden' },
-  savingsFill: { height: '100%', borderRadius: 4 },
 
-  // Prediction widget
-  predictionCard: {
+  // Section titles
+  sectionTitle: { ...typography.h3, marginBottom: spacing.md },
+  sectionHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    marginTop: spacing.sm,
+  },
+  seeAll: { ...typography.caption, fontWeight: '600' },
+
+  // Insights
+  insightsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
     marginBottom: spacing.lg,
   },
-  predictionLeft: {
+  insightCard: {
+    flex: 1,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    gap: spacing.xs,
+  },
+  insightEmoji: { fontSize: 22 },
+  insightLabel: { ...typography.tiny },
+  insightValue: { ...typography.h2, fontSize: 22 },
+  insightMeta: { ...typography.tiny },
+  insightBar: { height: 5, borderRadius: 3, overflow: 'hidden', marginTop: 4 },
+  insightBarFill: { height: '100%', borderRadius: 3 },
+
+  // Quick actions
+  quickGrid: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  quickBtn: {
+    flex: 1,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    gap: spacing.xs,
+  },
+  quickIcon: { fontSize: 22 },
+  quickLabel: { ...typography.tiny, fontSize: 10, textAlign: 'center' },
+
+  // Liste catégories
+  listCard: {
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+  },
+  listRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    flex: 1,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
   },
-  predictionEmoji: { fontSize: 28 },
-  predictionLabel: { ...typography.tiny, marginBottom: 2 },
-  predictionValue: { ...typography.h3, fontSize: 18 },
-  predictionMeta: { ...typography.tiny, marginTop: 2 },
-  predictionArrow: { fontSize: 22, fontWeight: '700' },
-
-  sectionTitle: { ...typography.h3, marginBottom: spacing.md },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md, marginTop: spacing.sm },
-  seeAll: { ...typography.caption, fontWeight: '600' },
-  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg },
-  quickBtn: { width: '31.5%', borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center', borderWidth: 1, gap: spacing.xs },
-  quickIcon: { fontSize: 22 },
-  quickLabel: { ...typography.tiny, fontSize: 10, textAlign: 'center' },
-  listCard: { borderRadius: radius.lg, borderWidth: 1, paddingHorizontal: spacing.md },
-  listRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 1 },
-  listLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 },
-  listIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  listIcon: {
+    width: 40, height: 40, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+  },
   listIconText: { fontSize: 20 },
-  listLabel: { ...typography.body, fontWeight: '500' },
+  listLabel: { ...typography.body, fontWeight: '500', marginBottom: 4 },
+  listMiniBar: { height: 4, borderRadius: 2, overflow: 'hidden' },
+  listMiniFill: { height: '100%', borderRadius: 2 },
   listAmount: { ...typography.bodyBold },
-  emptyCard: { borderRadius: radius.lg, padding: spacing.xl, borderWidth: 1, alignItems: 'center' },
+
+  // Empty
+  emptyCard: {
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
   emptyIcon: { fontSize: 42, marginBottom: spacing.md },
   emptyTitle: { ...typography.bodyBold, marginBottom: spacing.xs },
   emptyText: { ...typography.caption, textAlign: 'center' },
-  fabRow: { position: 'absolute', bottom: spacing.lg, left: spacing.lg, right: spacing.lg, flexDirection: 'row', gap: spacing.sm },
-  fabMic: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
-  fabMicText: { fontSize: 24 },
-  fabMain: { flex: 1, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: spacing.sm, height: 58 },
+
+  // FAB (position adjusted via inline style)
+  fab: {
+    position: 'absolute',
+    right: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.pill,
+  },
   fabPlus: { fontSize: 22, fontWeight: '800', marginTop: -2 },
-  fabText: { ...typography.button, fontSize: 16 },
+  fabText: { ...typography.button, fontSize: 15 },
 });

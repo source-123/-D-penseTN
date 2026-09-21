@@ -218,4 +218,11 @@ export default {
       "expenses": "مصروفات",
       "savings": "توفير"
   },
+  nav: {
+      "home": "الرئيسية",
+      "history": "السجل",
+      "goals": "الأهداف",
+      "budgets": "الميزانيات",
+      "settings": "الإعدادات"
+  },
 };

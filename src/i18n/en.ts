@@ -217,4 +217,11 @@ export default {
       "expenses": "Expenses",
       "savings": "Savings"
   },
+  nav: {
+      "home": "Home",
+      "history": "History",
+      "goals": "Goals",
+      "budgets": "Budgets",
+      "settings": "Settings"
+  },
 };

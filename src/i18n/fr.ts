@@ -218,4 +218,11 @@ export default {
       "expenses": "Dépenses",
       "savings": "Épargne"
   },
+  nav: {
+      "home": "Accueil",
+      "history": "Historique",
+      "goals": "Objectifs",
+      "budgets": "Budgets",
+      "settings": "Paramètres"
+  },
 };

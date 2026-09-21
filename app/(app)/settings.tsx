@@ -4,15 +4,18 @@ import {
   Switch, Pressable, Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNotifStore } from '@/store/notification.store';
 import { useLangStore, useT } from '@/store/language.store';
 import { useTheme } from '@/store/theme.store';
 import { useBalanceReminder } from '@/features/notifications/useBalanceReminder';
+import { signOutUser } from '@/services/auth.service';
 import { confirm, info } from '@/utils/confirm';
 import { spacing, typography, radius } from '@/theme';
 import { PALETTES, type ThemeKey } from '@/theme/palettes';
 import { formatCurrency } from '@/utils/formatCurrency';
 import { type Lang } from '@/i18n';
+import { useAuthStore } from '@/store/auth.store';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
@@ -22,6 +25,8 @@ const LANG_OPTIONS: { code: Lang; label: string; flag: string }[] = [
   { code: 'ar', label: 'العربية', flag: '🇹🇳' },
 ];
 
+const TAB_BAR_HEIGHT = 62;
+
 export default function Settings() {
   const router = useRouter();
   const { t, lang, isRTL } = useT();
@@ -29,7 +34,11 @@ export default function Settings() {
   const s = useNotifStore();
   const { setLang } = useLangStore();
   const { testNow } = useBalanceReminder();
+  const user = useAuthStore((st) => st.user);
+  const insets = useSafeAreaInsets();
   const [testing, setTesting] = useState(false);
+
+  const bottomInset = Math.max(insets.bottom, Platform.OS === 'android' ? 8 : 0);
 
   const handleEnableToggle = async (value: boolean) => {
     if (value) {
@@ -50,16 +59,50 @@ export default function Settings() {
     info(result.ok ? '✅' : '⚠️', result.message);
   };
 
+  const handleLogout = async () => {
+    const ok = await confirm({
+      title: t('common.confirm'),
+      message: t('dash.logoutConfirm'),
+      confirmLabel: t('settings.logoutBtn'),
+      destructive: true,
+    });
+    if (ok) await signOutUser();
+  };
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: tc.background }]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: TAB_BAR_HEIGHT + bottomInset + spacing.xxl }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={[styles.backText, { color: tc.textMuted }]}>{isRTL ? '→' : '←'} {t('common.back')}</Text>
-          </Pressable>
-          <Text style={[styles.title, { color: tc.text }, isRTL && styles.textRight]}>{t('settings.title')}</Text>
-          <Text style={[styles.subtitle, { color: tc.textMuted }, isRTL && styles.textRight]}>{t('settings.subtitle')}</Text>
+          <Text style={[styles.title, { color: tc.text }, isRTL && styles.textRight]}>
+            {t('settings.title')}
+          </Text>
+          <Text style={[styles.subtitle, { color: tc.textMuted }, isRTL && styles.textRight]}>
+            {t('settings.subtitle')}
+          </Text>
         </View>
+
+        {/* Compte connecté */}
+        {user && (
+          <View style={[styles.card, { backgroundColor: tc.surface, borderColor: tc.border }]}>
+            <View style={styles.row}>
+              <View style={[styles.avatar, { backgroundColor: tc.primaryGlow }]}>
+                <Text style={styles.avatarEmoji}>👤</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.rowTitle, { color: tc.text }]} numberOfLines={1}>
+                  {user.email}
+                </Text>
+                <Text style={[styles.rowSub, { color: tc.textMuted }]}>
+                  {t('settings.signedIn')}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Langue */}
         <Text style={[styles.sectionLabel, { color: tc.textMuted }, isRTL && styles.textRight]}>
@@ -74,7 +117,10 @@ export default function Settings() {
                 onPress={() => setLang(opt.code)}
                 style={[
                   styles.langBtn,
-                  { backgroundColor: active ? tc.primaryGlow : tc.surface, borderColor: active ? tc.primary : tc.border },
+                  {
+                    backgroundColor: active ? tc.primaryGlow : tc.surface,
+                    borderColor: active ? tc.primary : tc.border,
+                  },
                 ]}
               >
                 <Text style={styles.langFlag}>{opt.flag}</Text>
@@ -88,7 +134,7 @@ export default function Settings() {
 
         {/* Thème */}
         <Text style={[styles.sectionLabel, { color: tc.textMuted }, isRTL && styles.textRight]}>
-          🎨 Thème
+          {t('settings.theme')}
         </Text>
         <View style={styles.themeGrid}>
           {(Object.keys(PALETTES) as ThemeKey[]).map((key) => {
@@ -243,6 +289,25 @@ export default function Settings() {
             </Pressable>
           </>
         )}
+
+        {/* ─────── LOGOUT ─────── */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.logoutBtn,
+            { backgroundColor: tc.dangerGlow, borderColor: tc.danger },
+            pressed && { opacity: 0.8 },
+          ]}
+          onPress={handleLogout}
+        >
+          <Text style={styles.logoutIcon}>↪</Text>
+          <Text style={[styles.logoutText, { color: tc.danger }]}>
+            {t('settings.logoutBtn')}
+          </Text>
+        </Pressable>
+
+        <Text style={[styles.version, { color: tc.textFaint }]}>
+          DépenseTN · v1.2.0
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -250,16 +315,31 @@ export default function Settings() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  scroll: { padding: spacing.lg, paddingTop: spacing.md },
   header: { marginBottom: spacing.lg },
-  backBtn: { marginBottom: spacing.sm },
-  backText: { ...typography.body },
-  title: { ...typography.h2 },
-  subtitle: { ...typography.caption, marginTop: 2 },
+  title: { ...typography.h1, fontSize: 30 },
+  subtitle: { ...typography.caption, marginTop: 4 },
   textRight: { textAlign: 'right' },
 
-  sectionLabel: { ...typography.label, marginBottom: spacing.sm, marginTop: spacing.md },
+  sectionLabel: { ...typography.label, marginBottom: spacing.sm, marginTop: spacing.lg },
 
+  // Account
+  card: {
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+  },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  avatar: {
+    width: 44, height: 44, borderRadius: 22,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarEmoji: { fontSize: 22 },
+  rowTitle: { ...typography.bodyBold },
+  rowSub: { ...typography.caption, marginTop: 2 },
+
+  // Langues
   langRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
   langBtn: {
     flex: 1,
@@ -269,10 +349,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     gap: spacing.xs,
   },
-  langFlag: { fontSize: 28 },
+  langFlag: { fontSize: 26 },
   langLabel: { ...typography.caption, fontWeight: '600' },
 
-  themeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+  // Thèmes
+  themeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm },
   themeBtn: {
     width: '48%',
     borderRadius: radius.md,
@@ -281,30 +362,17 @@ const styles = StyleSheet.create({
     position: 'relative',
     gap: spacing.xs,
   },
-  themeSwatch: { width: 24, height: 24, borderRadius: 12, marginBottom: spacing.xs },
+  themeSwatch: { width: 22, height: 22, borderRadius: 11, marginBottom: spacing.xs },
   themeLabel: { ...typography.caption, fontWeight: '700' },
   themeCheck: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    top: 8, right: 8,
+    width: 20, height: 20, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
   },
   themeCheckText: { fontSize: 12, fontWeight: '800' },
 
-  card: {
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-  },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  rowTitle: { ...typography.bodyBold },
-  rowSub: { ...typography.caption, marginTop: 2, lineHeight: 16 },
-
+  // Chips / switches
   label: { ...typography.label, marginTop: spacing.md, marginBottom: spacing.sm },
   chipsRow: { gap: spacing.sm, paddingRight: spacing.md },
   chip: {
@@ -323,4 +391,20 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   testText: { ...typography.button },
+
+  // Logout
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    marginTop: spacing.xxl,
+  },
+  logoutIcon: { fontSize: 20, color: '#F43F5E' },
+  logoutText: { ...typography.button, fontSize: 16 },
+
+  version: { ...typography.tiny, textAlign: 'center', marginTop: spacing.lg },
 });
