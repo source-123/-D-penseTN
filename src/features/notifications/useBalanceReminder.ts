@@ -8,6 +8,7 @@ import {
 import { getTransactions } from '@/services/firestore.service';
 import { getBudgetsForMonth } from '@/services/budget.service';
 import { computeBudgetProgress } from '@/features/budgets/utils';
+import { processDueRecurrings } from '@/services/recurring.service';
 import { formatCurrency } from '@/utils/formatCurrency';
 
 export function useBalanceReminder() {
@@ -20,7 +21,24 @@ export function useBalanceReminder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─── 2. Replanifier le rappel quotidien ───
+  // ─── 2. Traiter les récurrences en retard ───
+  useEffect(() => {
+    if (!user) return;
+    processDueRecurrings(user.uid)
+      .then((n) => {
+        if (n > 0) {
+          console.log(`[recurring] ${n} transaction(s) créée(s) automatiquement`);
+          notify(
+            '🔁 Transactions récurrentes',
+            `${n} transaction${n > 1 ? 's' : ''} créée${n > 1 ? 's' : ''} automatiquement`,
+          );
+        }
+      })
+      .catch((e) => console.warn('[recurring] process failed', e));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid]);
+
+  // ─── 3. Replanifier le rappel quotidien ───
   useEffect(() => {
     if (!settings.hydrated || !settings.enabled || !settings.dailyReminder) {
       return;
@@ -52,7 +70,7 @@ export function useBalanceReminder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.hydrated, settings.enabled, settings.dailyReminder, settings.hour, settings.minute, user?.uid]);
 
-  // ─── 3. Vérifier alertes budget + solde bas ───
+  // ─── 4. Vérifier alertes budget + solde bas ───
   useEffect(() => {
     if (!user || !settings.hydrated || !settings.enabled) return;
 
@@ -102,7 +120,7 @@ export function useBalanceReminder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, settings.hydrated, settings.enabled]);
 
-  // ─── 4. Test manuel ───
+  // ─── 5. Test manuel ───
   const testNow = async () => {
     const ok = await requestPermission();
     if (!ok) {

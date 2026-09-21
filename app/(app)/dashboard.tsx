@@ -161,16 +161,18 @@ export default function Dashboard() {
           )}
         </View>
 
-        {/* Quick actions */}
+        {/* Quick actions — 6 boutons */}
         <Text style={[styles.sectionTitle, { color: tc.text }]}>{t('dash.shortcuts')}</Text>
         <View style={styles.quickGrid}>
           <QuickAction icon="📋" label={t('dash.tx')} onPress={() => router.push('/(app)/transactions')} tc={tc} />
           <QuickAction icon="🎯" label={t('dash.budgets')} onPress={() => router.push('/(app)/budgets')} tc={tc} />
+          <QuickAction icon="💰" label={t('goals.title')} onPress={() => router.push('/(app)/goals')} tc={tc} />
+          <QuickAction icon="🔁" label={t('recurring.title')} onPress={() => router.push('/(app)/recurring')} tc={tc} />
           <QuickAction icon="📈" label={t('dash.analysis')} onPress={() => router.push('/(app)/analysis')} tc={tc} />
           <QuickAction icon="📊" label={t('dash.stats')} onPress={() => router.push('/(app)/statistics')} tc={tc} />
         </View>
 
-        {/* Dépenses */}
+        {/* Dépenses du mois */}
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: tc.text }]}>{t('dash.monthExpenses')}</Text>
           {categoryTotals.length > 0 && (
@@ -236,7 +238,7 @@ function QuickAction({ icon, label, onPress, tc }: { icon: string; label: string
       onPress={onPress}
     >
       <Text style={styles.quickIcon}>{icon}</Text>
-      <Text style={[styles.quickLabel, { color: tc.textSecondary }]}>{label}</Text>
+      <Text style={[styles.quickLabel, { color: tc.textSecondary }]} numberOfLines={1}>{label}</Text>
     </Pressable>
   );
 }
@@ -272,10 +274,10 @@ const styles = StyleSheet.create({
   sectionTitle: { ...typography.h3, marginBottom: spacing.md },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md, marginTop: spacing.sm },
   seeAll: { ...typography.caption, fontWeight: '600' },
-  quickGrid: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
-  quickBtn: { flex: 1, borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center', borderWidth: 1, gap: spacing.xs },
+  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg },
+  quickBtn: { width: '31.5%', borderRadius: radius.md, paddingVertical: spacing.md, alignItems: 'center', borderWidth: 1, gap: spacing.xs },
   quickIcon: { fontSize: 22 },
-  quickLabel: { ...typography.tiny, fontSize: 10 },
+  quickLabel: { ...typography.tiny, fontSize: 10, textAlign: 'center' },
   listCard: { borderRadius: radius.lg, borderWidth: 1, paddingHorizontal: spacing.md },
   listRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md, borderBottomWidth: 1 },
   listLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 },
