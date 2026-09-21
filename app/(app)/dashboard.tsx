@@ -9,6 +9,7 @@ import { getTransactions } from '@/services/firestore.service';
 import { signOutUser } from '@/services/auth.service';
 import { getCategory } from '@/features/transactions/categories';
 import { confirm } from '@/utils/confirm';
+import { useT } from '@/store/language.store';
 import { colors, radius, spacing, typography, shadows } from '@/theme';
 import { formatCurrency } from '@/utils/formatCurrency';
 import type { Transaction } from '@/types';
@@ -16,6 +17,7 @@ import type { Transaction } from '@/types';
 export default function Dashboard() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const { t, isRTL } = useT();
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,9 +40,9 @@ export default function Dashboard() {
 
   const handleLogout = async () => {
     const ok = await confirm({
-      title: 'Déconnexion',
-      message: 'Tu veux vraiment te déconnecter ?',
-      confirmLabel: 'Déconnexion',
+      title: t('dash.logoutConfirm'),
+      message: t('dash.logoutConfirm'),
+      confirmLabel: t('common.confirm'),
       destructive: true,
     });
     if (ok) await signOutUser();
@@ -109,7 +111,7 @@ export default function Dashboard() {
         {/* ─── Header ─── */}
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.greeting}>Bonjour 👋</Text>
+            <Text style={styles.greeting}>{t('dash.greeting')}</Text>
             <Text style={styles.email} numberOfLines={1}>
               {user?.email}
             </Text>
@@ -133,7 +135,7 @@ export default function Dashboard() {
         {/* ─── Balance Card ─── */}
         <View style={[styles.balanceCard, shadows.card]}>
           <View style={styles.balanceGlow} />
-          <Text style={styles.balanceLabel}>SOLDE TOTAL</Text>
+          <Text style={styles.balanceLabel}>{t('dash.balanceTotal')}</Text>
           <Text
             style={[
               styles.balanceValue,
@@ -151,7 +153,7 @@ export default function Dashboard() {
               <View style={[styles.statIcon, { backgroundColor: colors.primaryGlow }]}>
                 <Text style={styles.statIconText}>↓</Text>
               </View>
-              <Text style={styles.statLabel}>Entrées</Text>
+              <Text style={styles.statLabel}>{t('dash.income')}</Text>
               <Text style={[styles.statValue, { color: colors.primary }]}>
                 +{formatCurrency(monthIncome, { withSymbol: false })}
               </Text>
@@ -163,7 +165,7 @@ export default function Dashboard() {
               <View style={[styles.statIcon, { backgroundColor: colors.dangerGlow }]}>
                 <Text style={styles.statIconText}>↑</Text>
               </View>
-              <Text style={styles.statLabel}>Sorties</Text>
+              <Text style={styles.statLabel}>{t('dash.expenses')}</Text>
               <Text style={[styles.statValue, { color: colors.danger }]}>
                 -{formatCurrency(monthExpenses, { withSymbol: false })}
               </Text>
@@ -173,7 +175,7 @@ export default function Dashboard() {
           {monthIncome > 0 && (
             <View style={styles.savingsBlock}>
               <View style={styles.savingsHeader}>
-                <Text style={styles.savingsLabel}>Épargne du mois</Text>
+                <Text style={styles.savingsLabel}>{t('dash.savingsMonth')}</Text>
                 <Text
                   style={[
                     styles.savingsPercent,
@@ -204,20 +206,20 @@ export default function Dashboard() {
         </View>
 
         {/* ─── Quick actions ─── */}
-        <Text style={styles.sectionTitle}>Raccourcis</Text>
+        <Text style={styles.sectionTitle}>{t('dash.shortcuts')}</Text>
         <View style={styles.quickGrid}>
-          <QuickAction icon="📋" label="Transactions" onPress={() => router.push('/(app)/transactions')} />
-          <QuickAction icon="🎯" label="Budgets" onPress={() => router.push('/(app)/budgets')} />
-          <QuickAction icon="📈" label="Analyse" onPress={() => router.push('/(app)/analysis')} />
-          <QuickAction icon="📊" label="Stats" onPress={() => router.push('/(app)/statistics')} />
+          <QuickAction icon="📋" label={t('dash.tx')} onPress={() => router.push('/(app)/transactions')} />
+          <QuickAction icon="🎯" label={t('dash.budgets')} onPress={() => router.push('/(app)/budgets')} />
+          <QuickAction icon="📈" label={t('dash.analysis')} onPress={() => router.push('/(app)/analysis')} />
+          <QuickAction icon="📊" label={t('dash.stats')} onPress={() => router.push('/(app)/statistics')} />
         </View>
 
         {/* ─── Dépenses ─── */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Dépenses du mois</Text>
+          <Text style={styles.sectionTitle}>{t('dash.monthExpenses')}</Text>
           {categoryTotals.length > 0 && (
             <Pressable onPress={() => router.push('/(app)/transactions')}>
-              <Text style={styles.seeAll}>Tout voir →</Text>
+              <Text style={styles.seeAll}>{t('dash.seeAll')}</Text>
             </Pressable>
           )}
         </View>
@@ -225,9 +227,9 @@ export default function Dashboard() {
         {categoryTotals.length === 0 ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyIcon}>💸</Text>
-            <Text style={styles.emptyTitle}>Aucune dépense ce mois</Text>
+            <Text style={styles.emptyTitle}>{t('dash.emptyTitle')}</Text>
             <Text style={styles.emptyText}>
-              Ajoute ta première en un tap.
+              {t('dash.emptyText')}
             </Text>
           </View>
         ) : (
@@ -257,7 +259,7 @@ export default function Dashboard() {
       </ScrollView>
 
       {/* ─── FAB Row ─── */}
-      <View style={styles.fabRow}>
+      <View style={[styles.fabRow, isRTL && { flexDirection: 'row-reverse' }]}>
         <Pressable
           style={({ pressed }) => [styles.fabMic, pressed && { opacity: 0.85 }]}
           onPress={() => router.push('/(app)/voice-input')}
@@ -273,7 +275,7 @@ export default function Dashboard() {
           onPress={() => router.push('/(app)/add-expense')}
         >
           <Text style={styles.fabPlus}>+</Text>
-          <Text style={styles.fabText}>Ajouter</Text>
+          <Text style={styles.fabText}>{t('common.add')}</Text>
         </Pressable>
       </View>
     </SafeAreaView>

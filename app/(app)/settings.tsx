@@ -5,26 +5,35 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useNotifStore } from '@/store/notification.store';
+import { useLangStore, useT } from '@/store/language.store';
 import { useBalanceReminder } from '@/features/notifications/useBalanceReminder';
 import { confirm, info } from '@/utils/confirm';
 import { colors, radius, spacing, typography } from '@/theme';
 import { formatCurrency } from '@/utils/formatCurrency';
+import { type Lang } from '@/i18n';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
+const LANG_OPTIONS: { code: Lang; label: string; flag: string }[] = [
+  { code: 'fr', label: 'Français', flag: '🇫🇷' },
+  { code: 'en', label: 'English', flag: '🇬🇧' },
+  { code: 'ar', label: 'العربية', flag: '🇹🇳' },
+];
+
 export default function Settings() {
   const router = useRouter();
+  const { t, lang, isRTL } = useT();
   const s = useNotifStore();
+  const { setLang } = useLangStore();
   const { testNow } = useBalanceReminder();
   const [testing, setTesting] = useState(false);
 
   const handleEnableToggle = async (value: boolean) => {
     if (value && Platform.OS === 'web') {
       const ok = await confirm({
-        title: 'Notifications navigateur',
-        message:
-          'Sur web, autorise les notifications dans ton navigateur. Sur mobile, ça marchera parfaitement via Expo Go.',
-        confirmLabel: 'Activer',
+        title: t('settings.notifTitle'),
+        message: t('settings.hint'),
+        confirmLabel: t('common.confirm'),
       });
       if (!ok) return;
     }
@@ -40,23 +49,60 @@ export default function Settings() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={styles.backText}>← Retour</Text>
+          <Pressable
+            onPress={() => router.back()}
+            style={[styles.backBtn, isRTL && { alignSelf: 'flex-end' }]}
+          >
+            <Text style={styles.backText}>
+              {isRTL ? '← ' : ''}{t('common.back')}{!isRTL ? '' : ''}
+            </Text>
           </Pressable>
-          <Text style={styles.title}>Notifications</Text>
-          <Text style={styles.subtitle}>Rappels et alertes</Text>
+          <Text style={[styles.title, isRTL && styles.textRight]}>
+            {t('settings.title')}
+          </Text>
+          <Text style={[styles.subtitle, isRTL && styles.textRight]}>
+            {t('settings.subtitle')}
+          </Text>
         </View>
 
-        {/* ─── Master switch ─── */}
+        {/* ─── Langue ─── */}
+        <Text style={[styles.sectionLabel, isRTL && styles.textRight]}>
+          {t('settings.language')}
+        </Text>
+        <View style={styles.langRow}>
+          {LANG_OPTIONS.map((opt) => {
+            const active = lang === opt.code;
+            return (
+              <Pressable
+                key={opt.code}
+                onPress={() => setLang(opt.code)}
+                style={[styles.langBtn, active && styles.langBtnActive]}
+              >
+                <Text style={styles.langFlag}>{opt.flag}</Text>
+                <Text style={[styles.langLabel, active && styles.langLabelActive]}>
+                  {opt.label}
+                </Text>
+                {active && <View style={styles.langCheck}><Text style={styles.langCheckText}>✓</Text></View>}
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* ─── Notifications ─── */}
+        <Text style={[styles.sectionLabel, isRTL && styles.textRight]}>
+          {t('settings.notifTitle')}
+        </Text>
+
         <View style={styles.card}>
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.rowTitle}>🔔 Activer les notifications</Text>
-              <Text style={styles.rowSub}>
-                Reçois des rappels sur ton solde et tes budgets
-              </Text>
+              <Text style={styles.rowTitle}>{t('settings.notifEnabled')}</Text>
+              <Text style={styles.rowSub}>{t('settings.notifEnabledSub')}</Text>
             </View>
             <Switch
               value={s.enabled}
@@ -69,14 +115,11 @@ export default function Settings() {
 
         {s.enabled && (
           <>
-            {/* ─── Rappel quotidien ─── */}
             <View style={styles.card}>
               <View style={styles.row}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.rowTitle}>⏰ Rappel quotidien</Text>
-                  <Text style={styles.rowSub}>
-                    Un message par jour avec ton solde
-                  </Text>
+                  <Text style={styles.rowTitle}>{t('settings.dailyReminder')}</Text>
+                  <Text style={styles.rowSub}>{t('settings.dailyReminderSub')}</Text>
                 </View>
                 <Switch
                   value={s.dailyReminder}
@@ -88,21 +131,17 @@ export default function Settings() {
 
               {s.dailyReminder && (
                 <>
-                  <Text style={styles.label}>Heure d'envoi</Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.hoursRow}
-                  >
+                  <Text style={styles.label}>{t('settings.sendHour')}</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
                     {HOURS.map((h) => {
                       const active = s.hour === h;
                       return (
                         <Pressable
                           key={h}
                           onPress={() => s.update({ hour: h, minute: 0 })}
-                          style={[styles.hourChip, active && styles.hourChipActive]}
+                          style={[styles.chip, active && styles.chipActive]}
                         >
-                          <Text style={[styles.hourText, active && styles.hourTextActive]}>
+                          <Text style={[styles.chipText, active && styles.chipTextActive]}>
                             {String(h).padStart(2, '0')}:00
                           </Text>
                         </Pressable>
@@ -113,14 +152,11 @@ export default function Settings() {
               )}
             </View>
 
-            {/* ─── Alertes budget ─── */}
             <View style={styles.card}>
               <View style={styles.row}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.rowTitle}>⚠️ Alerte budget</Text>
-                  <Text style={styles.rowSub}>
-                    Prévenir quand tu approches 80% d'un budget
-                  </Text>
+                  <Text style={styles.rowTitle}>{t('settings.budgetAlert')}</Text>
+                  <Text style={styles.rowSub}>{t('settings.budgetAlertSub')}</Text>
                 </View>
                 <Switch
                   value={s.budgetAlert}
@@ -131,14 +167,11 @@ export default function Settings() {
               </View>
             </View>
 
-            {/* ─── Alerte solde bas ─── */}
             <View style={styles.card}>
               <View style={styles.row}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.rowTitle}>💸 Alerte solde bas</Text>
-                  <Text style={styles.rowSub}>
-                    Prévenir quand ton solde descend sous un seuil
-                  </Text>
+                  <Text style={styles.rowTitle}>{t('settings.lowBalanceAlert')}</Text>
+                  <Text style={styles.rowSub}>{t('settings.lowBalanceAlertSub')}</Text>
                 </View>
                 <Switch
                   value={s.lowBalanceAlert}
@@ -150,21 +183,17 @@ export default function Settings() {
 
               {s.lowBalanceAlert && (
                 <>
-                  <Text style={styles.label}>Seuil</Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.hoursRow}
-                  >
+                  <Text style={styles.label}>{t('settings.threshold')}</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
                     {[50, 100, 200, 300, 500].map((amount) => {
                       const active = s.lowBalanceThreshold === amount;
                       return (
                         <Pressable
                           key={amount}
                           onPress={() => s.update({ lowBalanceThreshold: amount })}
-                          style={[styles.hourChip, active && styles.hourChipActive]}
+                          style={[styles.chip, active && styles.chipActive]}
                         >
-                          <Text style={[styles.hourText, active && styles.hourTextActive]}>
+                          <Text style={[styles.chipText, active && styles.chipTextActive]}>
                             {formatCurrency(amount, { withSymbol: false })} DT
                           </Text>
                         </Pressable>
@@ -175,21 +204,15 @@ export default function Settings() {
               )}
             </View>
 
-            {/* ─── Test ─── */}
             <Pressable
               style={[styles.testBtn, testing && { opacity: 0.6 }]}
               onPress={handleTest}
               disabled={testing}
             >
               <Text style={styles.testText}>
-                {testing ? 'Envoi…' : '🔔 Envoyer une notification test'}
+                {testing ? t('settings.sending') : t('settings.testNotif')}
               </Text>
             </Pressable>
-
-            <Text style={styles.hint}>
-              Sur web : autorise les notifications dans ton navigateur.{'\n'}
-              Sur mobile : notifications natives via Expo Go.
-            </Text>
           </>
         )}
       </ScrollView>
@@ -205,6 +228,46 @@ const styles = StyleSheet.create({
   backText: { ...typography.body, color: colors.textMuted },
   title: { ...typography.h2, color: colors.text },
   subtitle: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  textRight: { textAlign: 'right' },
+
+  sectionLabel: {
+    ...typography.label,
+    color: colors.textMuted,
+    marginBottom: spacing.sm,
+    marginTop: spacing.md,
+  },
+
+  langRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
+  langBtn: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    gap: spacing.xs,
+    position: 'relative',
+  },
+  langBtnActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryGlow,
+  },
+  langFlag: { fontSize: 28 },
+  langLabel: { ...typography.caption, color: colors.textSecondary, fontWeight: '600' },
+  langLabelActive: { color: colors.primary, fontWeight: '700' },
+  langCheck: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  langCheckText: { color: colors.background, fontSize: 11, fontWeight: '800' },
 
   card: {
     backgroundColor: colors.surface,
@@ -214,24 +277,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   rowTitle: { ...typography.bodyBold, color: colors.text },
   rowSub: { ...typography.caption, color: colors.textMuted, marginTop: 2, lineHeight: 16 },
 
   label: {
-    ...typography.caption,
+    ...typography.label,
     color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
     marginTop: spacing.md,
     marginBottom: spacing.sm,
   },
-  hoursRow: { gap: spacing.sm, paddingRight: spacing.md },
-  hourChip: {
+  chipsRow: { gap: spacing.sm, paddingRight: spacing.md },
+  chip: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
@@ -239,12 +296,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  hourChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  hourText: { ...typography.caption, color: colors.text, fontWeight: '600' },
-  hourTextActive: { color: colors.background },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { ...typography.caption, color: colors.text, fontWeight: '600' },
+  chipTextActive: { color: colors.background },
 
   testBtn: {
     backgroundColor: colors.surfaceAlt,
@@ -256,11 +310,4 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   testText: { ...typography.button, color: colors.text },
-  hint: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.lg,
-    lineHeight: 18,
-  },
 });

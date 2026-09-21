@@ -4,26 +4,27 @@ import { StatusBar } from 'expo-status-bar';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/services/firebase';
 import { useAuthStore } from '@/store/auth.store';
+import { useLangStore } from '@/store/language.store';
 import { useBalanceReminder } from '@/features/notifications/useBalanceReminder';
 import { colors } from '@/theme';
 import type { User } from '@/types';
 
 export default function RootLayout() {
   const { user, loading, setUser, setLoading } = useAuthStore();
+  const { hydrate, hydrated } = useLangStore();
   const segments = useSegments();
   const router = useRouter();
 
-  // 🔔 Rappels solde + budgets
+  // Hydrater la langue
+  useEffect(() => { hydrate(); }, []);
+
+  // Rappels
   useBalanceReminder();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
-        setUser({
-          uid: fbUser.uid,
-          email: fbUser.email,
-          displayName: fbUser.displayName,
-        });
+        setUser({ uid: fbUser.uid, email: fbUser.email, displayName: fbUser.displayName });
       } else {
         setUser(null);
       }
@@ -33,12 +34,12 @@ export default function RootLayout() {
   }, [setUser, setLoading]);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || !hydrated) return;
     const inAuthGroup = segments[0] === '(auth)';
     const inAppGroup = segments[0] === '(app)';
     if (!user && inAppGroup) router.replace('/(auth)/login');
     else if (user && inAuthGroup) router.replace('/(app)/dashboard');
-  }, [user, loading, segments]);
+  }, [user, loading, segments, hydrated]);
 
   return (
     <>
